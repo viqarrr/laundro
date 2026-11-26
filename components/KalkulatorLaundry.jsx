@@ -80,7 +80,7 @@ export default function KalkulatorLaundry({ produk, pengaturan = null }) {
   const estimasiDp = hitungDp(totalHarga, pengaturan);
 
   const namaGerai = pengaturan?.nama_gerai || toko.nama;
-  const nomorTujuan = normalisasiNomorWa(pengaturan?.nomor_wa || toko.nomorWhatsApp);
+  const nomorTujuan = normalisasiNomorWa(toko.nomorWhatsApp || pengaturan?.nomor_wa);
   const pesanWa = `Halo ${namaGerai}, saya ingin reservasi ${produk.nama} (${namaVarian}) sebanyak ${jumlahTabung} tabung/unit (est. ${beratValid} kg) seharga total ${formatRupiah(totalHarga)} (estimasi DP ${formatRupiah(estimasiDp)}). Mohon info konfirmasi DP.`;
   const tautanWa = `https://wa.me/${nomorTujuan}?text=${encodeURIComponent(pesanWa)}`;
 

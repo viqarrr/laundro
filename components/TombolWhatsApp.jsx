@@ -14,7 +14,7 @@ function normalisasiNomorWa(nomor) {
 
 export default function TombolWhatsApp({ produk, pengaturan = null, sumber = "detail" }) {
   const namaGerai = pengaturan?.nama_gerai || toko.nama;
-  const nomorTujuan = normalisasiNomorWa(pengaturan?.nomor_wa || toko.nomorWhatsApp);
+  const nomorTujuan = normalisasiNomorWa(toko.nomorWhatsApp || pengaturan?.nomor_wa);
   const teksPesan = `Halo ${namaGerai}, saya ingin memesan layanan "${produk.nama}" dengan tarif ${formatRupiah(produk.harga)}. Mohon info ketersediaan slot mesin.`;
   const tautanWa = `https://wa.me/${nomorTujuan}?text=${encodeURIComponent(teksPesan)}`;
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { logoutAdmin } from "@/app/admin/auth-actions";
+import TombolKeluarAdmin from "@/components/TombolKeluarAdmin";
 import { ensureAdminProfile, getAdminSession } from "@/lib/supabase/session";
 
 const superAdminLinks = [
@@ -44,14 +44,7 @@ export default async function NavAdmin({ role = null }) {
         </Link>
       ))}
 
-      <form action={logoutAdmin} className="ml-auto">
-        <button
-          type="submit"
-          className="inline-flex min-h-[38px] cursor-pointer items-center rounded-full border border-garis bg-latar px-4 py-1.5 text-sm font-semibold text-teks-lembut transition-colors hover:border-bahaya hover:bg-bahaya-latar hover:text-bahaya"
-        >
-          Keluar
-        </button>
-      </form>
+      <TombolKeluarAdmin />
     </nav>
   );
 }

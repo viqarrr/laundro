@@ -39,7 +39,7 @@ export async function loginAdmin(_prevState, formData) {
     return { error: "Masukkan email dan password yang valid." };
   }
 
-  let redirectTarget = null;
+  let loginBerhasil = false;
 
   try {
     const supabase = await createSupabaseServerClient();
@@ -69,13 +69,13 @@ export async function loginAdmin(_prevState, formData) {
     }
 
     resetRateLimit(rateKey);
-    redirectTarget = profile.role === "SUPERADMIN" ? "/admin" : "/admin/jadwal";
+    loginBerhasil = true;
   } catch {
     return { error: "Terjadi gangguan saat memproses login. Coba beberapa saat lagi." };
   }
 
-  if (redirectTarget) {
-    redirect(redirectTarget);
+  if (loginBerhasil) {
+    redirect("/admin");
   }
 
   return { error: "Login gagal diproses." };
@@ -115,12 +115,24 @@ export async function gantiPasswordAdmin(_prevState, formData) {
 }
 
 export async function logoutAdmin() {
+  let logoutBerhasil = false;
+
   try {
     const supabase = await createSupabaseServerClient();
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      return { error: "Gagal mengakhiri sesi admin. Silakan coba lagi." };
+    }
+
+    logoutBerhasil = true;
   } catch {
-    // Tetap arahkan ke halaman login agar sesi klien bersih.
+    return { error: "Terjadi gangguan saat mengakhiri sesi admin." };
   }
 
-  redirect("/admin/login");
+  if (logoutBerhasil) {
+    redirect("/admin/login");
+  }
+
+  return { error: "Gagal mengakhiri sesi admin." };
 }

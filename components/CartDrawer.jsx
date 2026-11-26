@@ -46,7 +46,7 @@ export default function CartDrawer({ pengaturan = null }) {
   if (!isOpen) return null;
 
   const namaGerai = pengaturan?.nama_gerai || toko.nama;
-  const nomorTujuan = normalisasiNomorWa(pengaturan?.nomor_wa || toko.nomorWhatsApp);
+  const nomorTujuan = normalisasiNomorWa(toko.nomorWhatsApp || pengaturan?.nomor_wa);
   const barisItem = items
     .map((item, idx) => {
       const totalBaris = Number(item.hargaSatuan || 0) * Number(item.jumlah || 0);

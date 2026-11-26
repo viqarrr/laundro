@@ -5,6 +5,7 @@ import CustomSelect from "@/components/CustomSelect";
 import Tombol from "@/components/Tombol";
 import { useUserPrefs } from "@/components/UserPrefsProvider";
 import { formatRupiah } from "@/lib/format";
+import { toko } from "@/lib/toko";
 import { catatKlikWa } from "@/lib/wa-tracking";
 
 function normalisasiNomorWa(nomor) {
@@ -45,8 +46,8 @@ export default function BandingkanClient({ semuaProduk = [], pengaturan = null }
     toggleCompare(picked);
   }
 
-  const namaGerai = pengaturan?.nama_gerai || "Laundro";
-  const nomorWa = normalisasiNomorWa(pengaturan?.nomor_wa);
+  const namaGerai = pengaturan?.nama_gerai || toko.nama;
+  const nomorWa = normalisasiNomorWa(toko.nomorWhatsApp || pengaturan?.nomor_wa);
 
   return (
     <div className="flex flex-col gap-6">
