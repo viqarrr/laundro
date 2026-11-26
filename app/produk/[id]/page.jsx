@@ -1,15 +1,40 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import TombolWhatsApp from "@/components/TombolWhatsApp";
-import CatatanBelumAktif from "@/components/CatatanBelumAktif";
-import { cariProdukContoh } from "@/lib/data-contoh";
+import { createSupabasePublicClient } from "@/lib/supabase/server";
 import { formatRupiah } from "@/lib/format";
 
-// US-02: halaman ini masih memakai data contoh.
-// Tugas peserta: ambil satu produk dari Supabase berdasarkan id, di sisi server.
+export const dynamic = "force-dynamic";
+
+async function ambilDetailLayanan(id) {
+  if (!/^\d+$/.test(String(id))) {
+    return null;
+  }
+
+  try {
+    const supabase = createSupabasePublicClient();
+    const { data, error } = await supabase
+      .from("produk")
+      .select(
+        "id, nama, harga, harga_coret, badge, deskripsi, foto_url, kategori, max_capacity_kg, cycle_duration_minutes, requires_washer, requires_dryer, stok, aktif"
+      )
+      .eq("id", Number(id))
+      .eq("aktif", true)
+      .maybeSingle();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export default async function HalamanDetailProduk({ params }) {
   const { id } = await params;
-  const produk = cariProdukContoh(id);
+  const produk = await ambilDetailLayanan(id);
 
   if (!produk) {
     notFound();
@@ -36,15 +61,17 @@ export default async function HalamanDetailProduk({ params }) {
           <img
             src={produk.foto_url || "/images/hero-machines.jpg"}
             alt={produk.nama}
-            className="aspect-square w-full max-h-[380px] rounded-[14px] object-cover shadow-product"
+            className="aspect-square max-h-[380px] w-full rounded-[14px] object-cover shadow-product"
           />
         </div>
 
         <div className="flex flex-col gap-5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-permukaan px-3 py-1 text-xs font-semibold text-teks-lembut">
-              {produk.kategori}
-            </span>
+            {produk.kategori ? (
+              <span className="rounded-full bg-permukaan px-3 py-1 text-xs font-semibold text-teks-lembut">
+                {produk.kategori}
+              </span>
+            ) : null}
             {produk.badge ? (
               <span className="rounded-full bg-utama-lembut px-3 py-1 text-xs font-semibold text-utama">
                 {produk.badge}
@@ -67,11 +94,13 @@ export default async function HalamanDetailProduk({ params }) {
             ) : null}
           </div>
 
-          <p className="max-w-prose text-[16px] leading-[24px] tracking-[-0.015em] text-teks-lembut">
-            {produk.deskripsi}
-          </p>
+          {produk.deskripsi ? (
+            <p className="max-w-prose text-[16px] leading-[24px] tracking-[-0.015em] text-teks-lembut">
+              {produk.deskripsi}
+            </p>
+          ) : null}
 
-          {(produk.max_capacity_kg || produk.cycle_duration_minutes) ? (
+          {produk.max_capacity_kg || produk.cycle_duration_minutes ? (
             <div className="overflow-hidden rounded-[20px] border border-garis bg-latar">
               {produk.max_capacity_kg ? (
                 <div className="flex items-center justify-between gap-4 px-5 py-3.5 text-sm">
@@ -104,8 +133,6 @@ export default async function HalamanDetailProduk({ params }) {
           <div className="pt-1">
             <TombolWhatsApp produk={produk} />
           </div>
-
-          <CatatanBelumAktif>Tombol pesan belum berfungsi: lihat US-03.</CatatanBelumAktif>
         </div>
       </div>
     </article>

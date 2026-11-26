@@ -3,9 +3,14 @@ import NavAdmin from "@/components/NavAdmin";
 import FormProduk from "@/components/FormProduk";
 import CatatanBelumAktif from "@/components/CatatanBelumAktif";
 import { cariProdukContoh } from "@/lib/data-contoh";
+import { requireAdmin } from "@/lib/supabase/session";
 
-// US-09 (bonus di jalur offline): ubah produk.
+export const dynamic = "force-dynamic";
+
+// US-09 (bonus): ubah produk.
 export default async function HalamanUbahProduk({ params }) {
+  await requireAdmin();
+
   const { id } = await params;
   const produk = cariProdukContoh(id);
 
@@ -16,7 +21,7 @@ export default async function HalamanUbahProduk({ params }) {
   return (
     <div className="flex flex-col gap-6 py-8">
       <NavAdmin />
-      <h1 className="text-2xl font-extrabold">Ubah produk</h1>
+      <h1 className="text-2xl font-semibold tracking-[-0.02em] text-teks">Ubah produk</h1>
       <CatatanBelumAktif>Simpan perubahan belum berfungsi: lihat US-09.</CatatanBelumAktif>
       <FormProduk produk={produk} labelTombol="Simpan perubahan" />
     </div>

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import KartuProduk from "@/components/KartuProduk";
 import Tombol from "@/components/Tombol";
-import CatatanBelumAktif from "@/components/CatatanBelumAktif";
-import { produkContoh } from "@/lib/data-contoh";
+import { createSupabasePublicClient } from "@/lib/supabase/server";
 import { toko } from "@/lib/toko";
+
+export const dynamic = "force-dynamic";
 
 const langkahKerja = [
   {
@@ -26,10 +27,30 @@ const langkahKerja = [
   },
 ];
 
-// US-01: halaman ini masih memakai data contoh.
-// Tugas peserta: ambil daftar produk dari tabel "produk" di Supabase, di sisi server.
-export default function HalamanKatalog() {
-  const daftarProduk = produkContoh;
+async function ambilDaftarLayanan() {
+  try {
+    const supabase = createSupabasePublicClient();
+    const { data, error } = await supabase
+      .from("produk")
+      .select(
+        "id, nama, harga, harga_coret, badge, deskripsi, foto_url, kategori, max_capacity_kg, cycle_duration_minutes, requires_washer, requires_dryer, stok, aktif, urutan, created_at"
+      )
+      .eq("aktif", true)
+      .order("urutan", { ascending: true })
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      return { daftarProduk: [], errorMuat: true };
+    }
+
+    return { daftarProduk: data || [], errorMuat: false };
+  } catch {
+    return { daftarProduk: [], errorMuat: true };
+  }
+}
+
+export default async function HalamanKatalog() {
+  const { daftarProduk, errorMuat } = await ambilDaftarLayanan();
 
   return (
     <>
@@ -112,16 +133,33 @@ export default function HalamanKatalog() {
               Pilih paket layanan cuci, pengering, atau add-on sesuai kebutuhan cucian Anda.
             </p>
           </div>
-          <CatatanBelumAktif>
-            Masih data contoh. Sambungkan ke database: lihat US-01 di docs/user-stories.md.
-          </CatatanBelumAktif>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {daftarProduk.map((produk) => (
-            <KartuProduk key={produk.id} produk={produk} />
-          ))}
-        </div>
+        {errorMuat ? (
+          <div className="rounded-[20px] border border-garis bg-permukaan p-8 text-center">
+            <p className="text-[17px] font-semibold text-teks">
+              Daftar layanan belum dapat dimuat
+            </p>
+            <p className="mt-1 text-[14px] text-teks-lembut">
+              Silakan muat ulang halaman beberapa saat lagi atau hubungi gerai melalui WhatsApp.
+            </p>
+          </div>
+        ) : daftarProduk.length === 0 ? (
+          <div className="rounded-[20px] border border-garis bg-permukaan p-8 text-center">
+            <p className="text-[17px] font-semibold text-teks">
+              Belum ada paket layanan tersedia
+            </p>
+            <p className="mt-1 text-[14px] text-teks-lembut">
+              Pemilik gerai belum menambahkan paket layanan aktif. Silakan cek kembali nanti.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {daftarProduk.map((produk) => (
+              <KartuProduk key={produk.id} produk={produk} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Band 4: Informasi Gerai & Operasional (.studios-grid 3 kolom) */}
