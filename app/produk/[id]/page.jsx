@@ -1,12 +1,46 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import DetailAksiPengunjung from "@/components/DetailAksiPengunjung";
 import GaleriProduk from "@/components/GaleriProduk";
 import KalkulatorLaundry from "@/components/KalkulatorLaundry";
 import KartuProduk from "@/components/KartuProduk";
+import TerakhirDilihat from "@/components/TerakhirDilihat";
+import UlasanProduk from "@/components/UlasanProduk";
+import { formatRupiah } from "@/lib/format";
 import { getPengaturanToko } from "@/lib/pengaturan";
 import { createSupabasePublicClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }) {
+  const { id } = await params;
+  const { produk } = await ambilDetailDanTerkait(id);
+
+  if (!produk) {
+    return {
+      title: "Layanan Tidak Ditemukan",
+    };
+  }
+
+  const deskripsi =
+    produk.deskripsi ||
+    `${produk.nama} dengan tarif ${formatRupiah(produk.harga)} di coin laundry Laundro.`;
+
+  return {
+    title: produk.nama,
+    description: deskripsi,
+    openGraph: {
+      title: `${produk.nama} - ${formatRupiah(produk.harga)}`,
+      description: deskripsi,
+      images: [
+        {
+          url: produk.foto_url || "/images/hero-machines.jpg",
+          alt: produk.nama,
+        },
+      ],
+    },
+  };
+}
 
 async function ambilDetailDanTerkait(id) {
   if (!/^\d+$/.test(String(id))) {
@@ -18,7 +52,7 @@ async function ambilDetailDanTerkait(id) {
   try {
     const supabase = createSupabasePublicClient();
 
-    const [produkRes, mesinRes] = await Promise.all([
+    const [produkRes, mesinRes, ulasanRes] = await Promise.all([
       supabase
         .from("produk")
         .select(
@@ -28,10 +62,17 @@ async function ambilDetailDanTerkait(id) {
         .eq("aktif", true)
         .maybeSingle(),
       supabase.from("machines").select("id, type, status"),
+      supabase
+        .from("ulasan")
+        .select("id, nama, rating, komentar, created_at")
+        .eq("produk_id", produkId)
+        .eq("status", "approved")
+        .order("created_at", { ascending: false })
+        .limit(30),
     ]);
 
     if (produkRes.error || !produkRes.data) {
-      return { produk: null, terkait: [] };
+      return { produk: null, terkait: [], ulasanList: [] };
     }
 
     const machines = mesinRes.data || [];
@@ -79,15 +120,15 @@ async function ambilDetailDanTerkait(id) {
     const cadangan = semuaKandidat.filter((item) => !prioritas.some((p) => p.id === item.id));
     const terkait = [...prioritas, ...cadangan].slice(0, 4);
 
-    return { produk, terkait };
+    return { produk, terkait, ulasanList: ulasanRes.data || [] };
   } catch {
-    return { produk: null, terkait: [] };
+    return { produk: null, terkait: [], ulasanList: [] };
   }
 }
 
 export default async function HalamanDetailProduk({ params }) {
   const { id } = await params;
-  const [{ produk, terkait }, pengaturan] = await Promise.all([
+  const [{ produk, terkait, ulasanList }, pengaturan] = await Promise.all([
     ambilDetailDanTerkait(id),
     getPengaturanToko(),
   ]);
@@ -130,6 +171,8 @@ export default async function HalamanDetailProduk({ params }) {
             {produk.nama}
           </h1>
 
+          <DetailAksiPengunjung produk={produk} />
+
           {produk.deskripsi ? (
             <p className="max-w-prose text-[16px] leading-[24px] tracking-[-0.015em] text-teks-lembut">
               {produk.deskripsi}
@@ -166,6 +209,8 @@ export default async function HalamanDetailProduk({ params }) {
         </div>
       </article>
 
+      <UlasanProduk produkId={produk.id} ulasanList={ulasanList} />
+
       {/* Produk Terkait (US-17) */}
       {terkait.length > 0 ? (
         <section
@@ -196,6 +241,10 @@ export default async function HalamanDetailProduk({ params }) {
           </div>
         </section>
       ) : null}
+
+      <div className="mt-12">
+        <TerakhirDilihat excludeId={produk.id} />
+      </div>
     </div>
   );
 }

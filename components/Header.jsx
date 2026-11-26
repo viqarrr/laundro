@@ -1,5 +1,6 @@
 import Link from "next/link";
 import CartHeaderButton from "@/components/CartHeaderButton";
+import ThemeToggle from "@/components/ThemeToggle";
 import { toko } from "@/lib/toko";
 
 const navItems = [
@@ -49,6 +50,7 @@ export default function Header({ pengaturan = null }) {
 
         <div className="flex items-center gap-2">
           {/* Slot kontrol tema, keranjang, dan akses cepat admin */}
+          <ThemeToggle />
           <CartHeaderButton />
           <Link
             href="/admin"

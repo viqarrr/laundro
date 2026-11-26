@@ -1,6 +1,7 @@
 import NavAdmin from "@/components/NavAdmin";
 import TabelProduk from "@/components/TabelProduk";
 import Tombol from "@/components/Tombol";
+import ImporCsvModal from "@/components/ImporCsvModal";
 import FilterProdukAdmin from "./FilterProdukAdmin";
 import { requireAdmin } from "@/lib/supabase/session";
 
@@ -227,7 +228,17 @@ export default async function HalamanAdmin({ searchParams }) {
             Total {totalCount} paket layanan ditemukan
           </p>
         </div>
-        <Tombol href="/admin/produk/baru">Tambah produk</Tombol>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href="/api/admin/produk/export"
+            download="laundro-produk.csv"
+            className="inline-flex min-h-[40px] items-center justify-center rounded-full border border-garis-tegas bg-latar px-4 py-2 text-xs font-semibold text-teks transition-colors hover:border-utama hover:bg-permukaan hover:text-utama"
+          >
+            Ekspor CSV
+          </a>
+          <ImporCsvModal />
+          <Tombol href="/admin/produk/baru">Tambah produk</Tombol>
+        </div>
       </div>
 
       <FilterProdukAdmin initialQ={q} initialStatus={status} />

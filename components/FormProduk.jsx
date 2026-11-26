@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import CustomSelect from "@/components/CustomSelect";
 import Input from "@/components/Input";
 import SwitchToggle from "@/components/SwitchToggle";
@@ -20,6 +20,10 @@ export default function FormProduk({
   daftarKategori = [],
 }) {
   const [state, formAction, isPending] = useActionState(action, null);
+  const formRef = useRef(null);
+  const [deskripsiInput, setDeskripsiInput] = useState(produk.deskripsi || "");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
   const [previewUrl, setPreviewUrl] = useState(produk.foto_url || "");
   const [fotoUrlInput, setFotoUrlInput] = useState(produk.foto_url || "");
   const [selectedFileName, setSelectedFileName] = useState("");
@@ -78,10 +82,52 @@ export default function FormProduk({
     }
   }
 
+  async function handleBuatDeskripsiAi() {
+    if (aiLoading) return;
+    setAiError("");
+
+    const fd = formRef.current ? new FormData(formRef.current) : null;
+    const nama = String(fd?.get("nama") || "").trim();
+    const kategori = String(fd?.get("kategori") || "").trim();
+    const maxCapacityKg = Number(fd?.get("max_capacity_kg") || 7);
+    const cycleDurationMinutes = Number(fd?.get("cycle_duration_minutes") || 40);
+
+    if (nama.length < 2) {
+      setAiError("Isi nama paket layanan terlebih dahulu sebelum membuat deskripsi AI.");
+      return;
+    }
+
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/ai/deskripsi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nama,
+          kategori,
+          max_capacity_kg: maxCapacityKg,
+          cycle_duration_minutes: cycleDurationMinutes,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.deskripsi) {
+        setAiError(data?.error || "Gagal membuat deskripsi AI. Silakan coba lagi.");
+        return;
+      }
+
+      setDeskripsiInput(String(data.deskripsi));
+    } catch {
+      setAiError("Koneksi bermasalah saat menghubungi generator deskripsi AI.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   const errors = state?.errors || {};
 
   return (
-    <form action={formAction} className="flex max-w-2xl flex-col gap-5">
+    <form ref={formRef} action={formAction} className="flex max-w-2xl flex-col gap-5">
       {state?.error ? (
         <p
           role="alert"
@@ -296,15 +342,34 @@ export default function FormProduk({
           </div>
         </div>
 
-        <div className="flex flex-col gap-1">
-          <Input
-            label="Deskripsi layanan"
+        <div className="flex flex-col gap-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label
+              htmlFor="input-deskripsi-produk"
+              className="text-[13px] font-semibold tracking-[-0.01em] text-teks"
+            >
+              Deskripsi layanan
+            </label>
+            <button
+              type="button"
+              onClick={handleBuatDeskripsiAi}
+              disabled={aiLoading || isPending}
+              className="inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-full border border-garis-tegas bg-permukaan px-3.5 py-1 text-xs font-semibold text-utama transition-colors hover:border-utama hover:bg-utama-lembut disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {aiLoading ? "Menyusun deskripsi..." : "Buat Deskripsi AI"}
+            </button>
+          </div>
+          <textarea
+            id="input-deskripsi-produk"
             name="deskripsi"
-            textarea
-            defaultValue={produk.deskripsi || ""}
+            rows={4}
+            value={deskripsiInput}
+            onChange={(e) => setDeskripsiInput(e.target.value)}
             placeholder="Jelaskan cakupan layanan, kapasitas drum, dan perkiraan waktu selesai."
             required
+            className="min-h-[44px] w-full rounded-[8px] border border-garis-tegas bg-latar px-3.5 py-2.5 text-[15px] text-teks placeholder:text-teks-lembut transition-colors focus:border-utama focus:outline-none"
           />
+          {aiError ? <FieldError message={aiError} /> : null}
           <FieldError message={errors.deskripsi} />
         </div>
 

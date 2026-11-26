@@ -1,4 +1,5 @@
 import Link from "next/link";
+import KartuProdukActions from "@/components/KartuProdukActions";
 import { formatRupiah } from "@/lib/format";
 
 function getStatusStok(stok) {
@@ -45,13 +46,13 @@ export default function KartuProduk({ produk }) {
     .join(" · ");
 
   return (
-    <Link
-      href={`/produk/${produk.id}`}
+    <article
       className={`group grid grid-cols-1 items-center gap-5 rounded-[20px] border border-garis bg-latar p-6 transition-colors duration-200 hover:border-garis-tegas sm:grid-cols-[140px_minmax(0,1fr)] sm:gap-6 ${
         statusStok.habis ? "opacity-85" : ""
       }`}
     >
-      <div
+      <Link
+        href={`/produk/${produk.id}`}
         className={`relative aspect-square w-full max-w-[180px] overflow-hidden rounded-[14px] p-2.5 sm:max-w-none ${
           isDarkMedia ? "bg-[#272729]" : "bg-permukaan"
         }`}
@@ -63,7 +64,7 @@ export default function KartuProduk({ produk }) {
             statusStok.habis ? "grayscale-[40%]" : ""
           }`}
         />
-      </div>
+      </Link>
 
       <div className="flex min-w-0 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -84,9 +85,11 @@ export default function KartuProduk({ produk }) {
           <span className="numeric text-[13px] font-medium text-teks-lembut">{infoMesin}</span>
         ) : null}
 
-        <h3 className="text-[22px] font-semibold leading-[28px] tracking-[-0.01em] text-teks transition-colors group-hover:text-utama">
-          {produk.nama}
-        </h3>
+        <Link href={`/produk/${produk.id}`}>
+          <h3 className="text-[22px] font-semibold leading-[28px] tracking-[-0.01em] text-teks transition-colors group-hover:text-utama">
+            {produk.nama}
+          </h3>
+        </Link>
 
         {produk.deskripsi ? (
           <p className="line-clamp-2 text-[14px] leading-[20px] tracking-[-0.01em] text-teks-lembut">
@@ -110,16 +113,21 @@ export default function KartuProduk({ produk }) {
           ) : null}
         </div>
 
-        <span
-          className={`mt-1 inline-flex min-h-[38px] items-center self-start rounded-full px-4 py-1.5 text-[15px] font-semibold transition-colors ${
-            statusStok.habis
-              ? "bg-permukaan text-teks-lembut group-hover:bg-garis/40"
-              : "bg-utama-lembut text-utama group-hover:bg-utama group-hover:text-white"
-          }`}
-        >
-          {statusStok.habis ? "Lihat Jadwal Lain" : "Lihat & Pesan"}
-        </span>
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+          <Link
+            href={`/produk/${produk.id}`}
+            className={`inline-flex min-h-[38px] items-center rounded-full px-4 py-1.5 text-[14px] font-semibold transition-colors ${
+              statusStok.habis
+                ? "bg-permukaan text-teks-lembut hover:bg-garis/40"
+                : "bg-utama-lembut text-utama hover:bg-utama hover:text-white"
+            }`}
+          >
+            {statusStok.habis ? "Lihat Jadwal Lain" : "Lihat & Pesan"}
+          </Link>
+
+          <KartuProdukActions produk={produk} />
+        </div>
       </div>
-    </Link>
+    </article>
   );
 }

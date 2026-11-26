@@ -5,6 +5,7 @@ const adminLinks = [
   { href: "/admin", label: "Produk" },
   { href: "/admin/kategori", label: "Kategori" },
   { href: "/admin/jadwal", label: "Jadwal" },
+  { href: "/admin/ulasan", label: "Ulasan" },
   { href: "/admin/pengaturan", label: "Pengaturan" },
   { href: "/admin/akun", label: "Akun" },
   { href: "/admin/log", label: "Log" },

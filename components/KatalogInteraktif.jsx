@@ -5,6 +5,7 @@ import Link from "next/link";
 import CustomSelect from "@/components/CustomSelect";
 import KartuProduk from "@/components/KartuProduk";
 import Tombol from "@/components/Tombol";
+import { useUserPrefs } from "@/components/UserPrefsProvider";
 
 const PAGE_SIZE = 6;
 
@@ -23,8 +24,10 @@ export default function KatalogInteraktif({
   initialKategori = "",
   initialSort = "bawaan",
 }) {
+  const { hydrated, isFavorite, favoriteCount } = useUserPrefs();
   const [query, setQuery] = useState(initialQuery);
   const [selectedKategori, setSelectedKategori] = useState(initialKategori);
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [sortBy, setSortBy] = useState(
     SORT_OPTIONS.some((opt) => opt.value === initialSort) ? initialSort : "bawaan"
   );
@@ -76,6 +79,10 @@ export default function KatalogInteraktif({
     const qLower = query.trim().toLowerCase();
 
     const filtered = daftarProduk.filter((item) => {
+      if (onlyFavorites && (!hydrated || !isFavorite(item.id))) {
+        return false;
+      }
+
       if (selectedKategori) {
         const catMatch =
           String(item.kategori || "").toLowerCase() ===
@@ -114,7 +121,7 @@ export default function KatalogInteraktif({
     });
 
     return sorted;
-  }, [daftarProduk, query, selectedKategori, activeCategoryObj, sortBy]);
+  }, [daftarProduk, query, selectedKategori, activeCategoryObj, sortBy, onlyFavorites, hydrated, isFavorite]);
 
   const displayedItems = filteredAndSorted.slice(0, visibleCount);
   const hasMore = visibleCount < filteredAndSorted.length;
@@ -125,6 +132,7 @@ export default function KatalogInteraktif({
   }
 
   function handleKategoriSelect(katNama) {
+    setOnlyFavorites(false);
     setSelectedKategori(katNama);
     setVisibleCount(PAGE_SIZE);
   }
@@ -137,6 +145,7 @@ export default function KatalogInteraktif({
   function handleResetAll() {
     setQuery("");
     setSelectedKategori("");
+    setOnlyFavorites(false);
     setSortBy("bawaan");
     setVisibleCount(PAGE_SIZE);
   }
@@ -207,14 +216,35 @@ export default function KatalogInteraktif({
             <button
               type="button"
               onClick={() => handleKategoriSelect("")}
-              aria-pressed={selectedKategori === ""}
+              aria-pressed={!onlyFavorites && selectedKategori === ""}
               className={`inline-flex min-h-[38px] cursor-pointer items-center rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
-                selectedKategori === ""
+                !onlyFavorites && selectedKategori === ""
                   ? "bg-utama text-white"
                   : "border border-garis bg-latar text-teks-lembut hover:border-garis-tegas hover:text-teks"
               }`}
             >
               Semua
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setOnlyFavorites((prev) => !prev);
+                setVisibleCount(PAGE_SIZE);
+              }}
+              aria-pressed={onlyFavorites}
+              className={`inline-flex min-h-[38px] cursor-pointer items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
+                onlyFavorites
+                  ? "bg-bahaya text-white"
+                  : "border border-garis bg-latar text-teks-lembut hover:border-garis-tegas hover:text-teks"
+              }`}
+            >
+              <span>Favorit</span>
+              {hydrated && favoriteCount > 0 ? (
+                <span className="numeric rounded-full bg-latar/20 px-1.5 text-[11px]">
+                  {favoriteCount}
+                </span>
+              ) : null}
             </button>
 
             {kategoriItems.map((kat) => {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import KatalogInteraktif from "@/components/KatalogInteraktif";
 import LiveMesinStatus from "@/components/LiveMesinStatus";
+import TerakhirDilihat from "@/components/TerakhirDilihat";
 import Tombol from "@/components/Tombol";
 import { getJakartaNow, releaseExpiredLocks } from "@/lib/laundry-scheduler";
 import { getPengaturanToko } from "@/lib/pengaturan";
@@ -279,6 +280,10 @@ export default async function HalamanKatalog({ searchParams }) {
             initialSort={initialSort}
           />
         )}
+
+        <div className="mt-10">
+          <TerakhirDilihat />
+        </div>
       </section>
 
       {/* Band 4: Informasi Gerai & Operasional (.studios-grid 3 kolom) */}
