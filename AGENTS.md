@@ -2,6 +2,15 @@
 
 Baca file ini sebelum mengerjakan apa pun. Aturan di sini berlaku untuk setiap prompt.
 
+## ATURAN KERAS SISTEM PENILAIAN, USER STORIES & DOMAIN
+
+- **Single Source of Truth:** Seluruh pengerjaan fitur wajib merujuk pada `docs/user-stories.md` (US-01 s/d US-50, K-6 s/d K-13, serta US-EXTRA-01 s/d US-EXTRA-03) dan menggunakan format pesan commit sesuai nomor US (mis. `US-07: list paket layanan dari database`).
+- **Route Guardrail:** Dilarang menghapus atau mengganti nama rute bawaan (`/`, `/produk/[id]`, `/admin`, `/admin/login`, `/admin/password`, `/admin/produk/baru`, `/admin/produk/[id]/ubah`). Fitur baru Coin Laundry (`/antrean`, `/tentang`, `/bandingkan`, `/kategori/[slug]`, `/admin/jadwal`, `/admin/kategori`, `/admin/ulasan`, `/admin/pengaturan`, `/admin/akun`, `/admin/log`) wajib ditambahkan secara additive.
+- **Schema Guardrail:** Dilarang menghapus atau mengubah nama tabel/kolom bawaan di `docs/schema.sql`. Perubahan database wajib bersifat additive (menambah kolom nullable/default pada tabel `produk` atau membuat tabel baru seperti `machines`, `bookings`, `machine_time_blocks`, `kategori`, `ulasan`, `wa_clicks`, `pengaturan_toko`, `admin_profiles`, `admin_logs`).
+- **Domain Mapping:** Entitas `produk` bawaan dipetakan sebagai "Paket Layanan & Add-on Coin Laundry" (Cuci + Kering, Cuci Saja, Kering Saja, Add-on Deterjen/Pewangi, Drop-off).
+- **Security Guardrail (K-6 s/d K-13):** Dilarang menggunakan `dangerouslySetInnerHTML`, `eval()`, `new Function()`, atau `console.log` yang mencetak password, token, API key, atau data sensitif. Setiap Server Action dan API mutasi wajib mengecek sesi login admin dan memvalidasi input di server. Pesan error ke user tidak boleh membocorkan stack trace atau query SQL.
+- **Clean UI Rule:** Bebas karakter em-dash pada teks antarmuka, hindari UI emoji berlebihan, hindari template card generik, dan ikuti token visual dari `_ref/test-agy/` saat masuk tahap implementasi desain (US-EXTRA-02).
+
 ## Tentang proyek
 
 Aplikasi katalog produk UMKM. Pengunjung melihat katalog dan detail produk, lalu memesan lewat WhatsApp. Pemilik toko masuk ke halaman admin untuk mengganti password dan mengelola produk.
