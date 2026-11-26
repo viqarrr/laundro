@@ -10,6 +10,8 @@ import { toko } from "@/lib/toko";
 
 export const dynamic = "force-dynamic";
 
+const PAGE_SIZE = 6;
+
 const langkahKerja = [
   {
     nomor: "01",
@@ -31,7 +33,7 @@ const langkahKerja = [
   },
 ];
 
-async function ambilDataKatalog() {
+async function ambilDataKatalog({ q = "", kategori = "", sort = "bawaan", limit = PAGE_SIZE } = {}) {
   try {
     const supabase = createSupabasePublicClient();
     await releaseExpiredLocks(supabase);
@@ -39,15 +41,7 @@ async function ambilDataKatalog() {
     const nowJakarta = getJakartaNow();
     const todayStr = nowJakarta.dateStr;
 
-    const [produkRes, kategoriRes, mesinRes, blocksTodayRes, pengaturan] = await Promise.all([
-      supabase
-        .from("produk")
-        .select(
-          "id, nama, harga, harga_coret, badge, deskripsi, foto_url, kategori, max_capacity_kg, cycle_duration_minutes, requires_washer, requires_dryer, stok, aktif, urutan, created_at"
-        )
-        .eq("aktif", true)
-        .order("urutan", { ascending: true })
-        .order("created_at", { ascending: false }),
+    const [kategoriRes, mesinRes, blocksTodayRes, pengaturan, activeIdsRes] = await Promise.all([
       supabase
         .from("kategori")
         .select("id, nama, slug, deskripsi, urutan")
@@ -64,12 +58,59 @@ async function ambilDataKatalog() {
         .eq("block_date", todayStr)
         .in("block_status", ["LOCKED_TEMP", "BOOKED", "RUNNING"]),
       getPengaturanToko(),
+      supabase.from("produk").select("id").eq("aktif", true),
     ]);
+
+    const daftarKategori = kategoriRes.error ? [] : kategoriRes.data || [];
+    const matchedKategori = kategori
+      ? daftarKategori.find(
+          (k) =>
+            k.nama.toLowerCase() === kategori.toLowerCase() ||
+            k.slug.toLowerCase() === kategori.toLowerCase()
+        )
+      : null;
+
+    let produkQuery = supabase
+      .from("produk")
+      .select(
+        "id, nama, harga, harga_coret, badge, deskripsi, foto_url, kategori, max_capacity_kg, cycle_duration_minutes, requires_washer, requires_dryer, stok, aktif, urutan, created_at",
+        { count: "exact" }
+      )
+      .eq("aktif", true);
+
+    if (kategori) {
+      produkQuery = produkQuery.eq("kategori", matchedKategori ? matchedKategori.nama : kategori);
+    }
+
+    const safeQ = q.replace(/[%_,()]/g, " ").trim();
+    if (safeQ) {
+      produkQuery = produkQuery.or(
+        `nama.ilike.%${safeQ}%,kategori.ilike.%${safeQ}%,deskripsi.ilike.%${safeQ}%`
+      );
+    }
+
+    if (sort === "termurah") {
+      produkQuery = produkQuery.order("harga", { ascending: true }).order("id", { ascending: true });
+    } else if (sort === "termahal") {
+      produkQuery = produkQuery.order("harga", { ascending: false }).order("id", { ascending: true });
+    } else if (sort === "terbaru") {
+      produkQuery = produkQuery.order("created_at", { ascending: false });
+    } else if (sort === "nama-az") {
+      produkQuery = produkQuery.order("nama", { ascending: true });
+    } else {
+      produkQuery = produkQuery
+        .order("urutan", { ascending: true })
+        .order("created_at", { ascending: false });
+    }
+
+    const produkRes = await produkQuery.range(0, Math.max(PAGE_SIZE, limit) - 1);
 
     if (produkRes.error) {
       return {
         daftarProduk: [],
-        daftarKategori: [],
+        totalProdukCount: 0,
+        activeIds: [],
+        daftarKategori,
         machines: [],
         blocksToday: [],
         currentTimeStr: nowJakarta.timeStr,
@@ -93,9 +134,13 @@ async function ambilDataKatalog() {
       return item;
     });
 
+    const activeIds = (activeIdsRes.data || []).map((r) => r.id);
+
     return {
       daftarProduk,
-      daftarKategori: kategoriRes.error ? [] : kategoriRes.data || [],
+      totalProdukCount: produkRes.count ?? daftarProduk.length,
+      activeIds,
+      daftarKategori,
       machines,
       blocksToday: blocksTodayRes.data || [],
       currentTimeStr: nowJakarta.timeStr,
@@ -107,6 +152,8 @@ async function ambilDataKatalog() {
     const nowJakarta = getJakartaNow();
     return {
       daftarProduk: [],
+      totalProdukCount: 0,
+      activeIds: [],
       daftarKategori: [],
       machines: [],
       blocksToday: [],
@@ -122,19 +169,31 @@ export default async function HalamanKatalog({ searchParams }) {
   const initialQuery = String(sp?.q || "").trim();
   const initialKategori = String(sp?.kategori || "").trim();
   const initialSort = String(sp?.sort || "bawaan").trim();
+  const limitRaw = Number(sp?.limit || PAGE_SIZE);
+  const currentLimit =
+    Number.isInteger(limitRaw) && limitRaw >= PAGE_SIZE ? Math.min(limitRaw, 100) : PAGE_SIZE;
 
   const {
     daftarProduk,
+    totalProdukCount,
+    activeIds,
     daftarKategori,
     machines,
     blocksToday,
     currentTimeStr,
     pengaturan,
     errorMuat,
-  } = await ambilDataKatalog();
+  } = await ambilDataKatalog({
+    q: initialQuery,
+    kategori: initialKategori,
+    sort: initialSort,
+    limit: currentLimit,
+  });
+
   const namaGerai = pengaturan?.nama_gerai || toko.nama;
   const alamatGerai = pengaturan?.alamat || toko.alamat;
   const jamBukaGerai = pengaturan?.jam_operasional_label || toko.jamBuka;
+  const hasFilterAktif = Boolean(initialQuery || initialKategori);
 
   return (
     <>
@@ -262,7 +321,7 @@ export default async function HalamanKatalog({ searchParams }) {
               Silakan muat ulang halaman beberapa saat lagi atau hubungi gerai melalui WhatsApp.
             </p>
           </div>
-        ) : daftarProduk.length === 0 ? (
+        ) : daftarProduk.length === 0 && !hasFilterAktif ? (
           <div className="rounded-[20px] border border-garis bg-permukaan p-8 text-center">
             <p className="text-[17px] font-semibold text-teks">
               Belum ada paket layanan tersedia
@@ -274,6 +333,8 @@ export default async function HalamanKatalog({ searchParams }) {
         ) : (
           <KatalogInteraktif
             daftarProduk={daftarProduk}
+            totalProdukCount={totalProdukCount}
+            currentLimit={currentLimit}
             daftarKategori={daftarKategori}
             initialQuery={initialQuery}
             initialKategori={initialKategori}
@@ -282,7 +343,7 @@ export default async function HalamanKatalog({ searchParams }) {
         )}
 
         <div className="mt-10">
-          <TerakhirDilihat />
+          <TerakhirDilihat activeIds={activeIds} />
         </div>
       </section>
 

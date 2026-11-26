@@ -16,7 +16,7 @@ export default async function HalamanBandingkan() {
     supabase
       .from("produk")
       .select(
-        "id, nama, harga, harga_coret, badge, foto_url, kategori, max_capacity_kg, cycle_duration_minutes, requires_washer, requires_dryer, stok"
+        "id, nama, deskripsi, harga, harga_coret, badge, foto_url, kategori, max_capacity_kg, cycle_duration_minutes, requires_washer, requires_dryer, stok"
       )
       .eq("aktif", true)
       .order("urutan", { ascending: true })

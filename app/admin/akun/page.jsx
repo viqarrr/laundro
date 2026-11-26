@@ -5,7 +5,7 @@ import { requireSuperAdmin } from "@/lib/supabase/session";
 export const dynamic = "force-dynamic";
 
 export default async function HalamanAkunAdmin() {
-  const { supabase, user } = await requireSuperAdmin();
+  const { supabase, user, profile } = await requireSuperAdmin();
 
   const { data: daftarAkun, error } = await supabase
     .from("admin_profiles")
@@ -37,7 +37,11 @@ export default async function HalamanAkunAdmin() {
           Gagal memuat daftar akun admin dari database.
         </p>
       ) : (
-        <KelolaAkun daftarAkun={daftarAkun || []} currentUserId={user.id} />
+        <KelolaAkun
+          daftarAkun={daftarAkun || []}
+          currentUserId={profile?.user_id || user.id}
+          currentUserEmail={profile?.email || user.email}
+        />
       )}
     </div>
   );

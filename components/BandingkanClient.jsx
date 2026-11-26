@@ -17,10 +17,14 @@ function normalisasiNomorWa(nomor) {
 export default function BandingkanClient({ semuaProduk = [], pengaturan = null }) {
   const { hydrated, compareItems, toggleCompare, clearCompare } = useUserPrefs();
 
-  // Sinkronkan snapshot dengan data terbaru dari server
+  // Sinkronkan snapshot dengan data terbaru dari server, tandai jika sudah tidak tersedia
+  const serverMap = new Map(semuaProduk.map((p) => [p.id, p]));
   const resolvedItems = hydrated
     ? compareItems
-        .map((snap) => semuaProduk.find((p) => p.id === snap.id) || snap)
+        .map((snap) => {
+          const live = serverMap.get(snap.id);
+          return live ? { ...live, isMissing: false } : { ...snap, isMissing: true };
+        })
         .slice(0, 2)
     : [];
 
@@ -116,6 +120,11 @@ export default function BandingkanClient({ semuaProduk = [], pengaturan = null }
                         >
                           {item.nama}
                         </Link>
+                        {item.isMissing ? (
+                          <span className="mt-1 inline-flex rounded-full bg-bahaya-latar px-2.5 py-0.5 text-[11px] font-semibold text-bahaya">
+                            Produk tidak ditemukan / nonaktif
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                   </th>
@@ -165,8 +174,27 @@ export default function BandingkanClient({ semuaProduk = [], pengaturan = null }
                 ))}
               </tr>
               <tr>
+                <td className="px-5 py-3.5 font-semibold text-teks-lembut">Deskripsi</td>
+                {resolvedItems.map((item) => (
+                  <td key={item.id} className="px-5 py-3.5 text-xs leading-relaxed text-teks-lembut">
+                    {item.isMissing
+                      ? "Produk ini sudah tidak ditemukan atau dinonaktifkan di katalog."
+                      : item.deskripsi || "-"}
+                  </td>
+                ))}
+              </tr>
+              <tr>
                 <td className="px-5 py-3.5 font-semibold text-teks-lembut">Ketersediaan</td>
                 {resolvedItems.map((item) => {
+                  if (item.isMissing) {
+                    return (
+                      <td key={item.id} className="px-5 py-3.5">
+                        <span className="inline-flex rounded-full bg-bahaya-latar px-2.5 py-0.5 text-xs font-semibold text-bahaya">
+                          Tidak tersedia
+                        </span>
+                      </td>
+                    );
+                  }
                   const stok = Number(item.stok ?? 10);
                   return (
                     <td key={item.id} className="px-5 py-3.5">
@@ -188,6 +216,13 @@ export default function BandingkanClient({ semuaProduk = [], pengaturan = null }
               <tr>
                 <td className="px-5 py-4 font-semibold text-teks-lembut">Aksi</td>
                 {resolvedItems.map((item) => {
+                  if (item.isMissing) {
+                    return (
+                      <td key={item.id} className="px-5 py-4 text-xs font-medium text-bahaya">
+                        Produk tidak ditemukan
+                      </td>
+                    );
+                  }
                   const waText = `Halo ${namaGerai}, saya ingin memesan layanan "${item.nama}" seharga ${formatRupiah(item.harga)}.`;
                   const waUrl = `https://wa.me/${nomorWa}?text=${encodeURIComponent(waText)}`;
                   return (

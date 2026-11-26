@@ -1,99 +1,53 @@
 import { NextResponse } from "next/server";
 import { formatRupiah } from "@/lib/format";
 import { callGeminiFlash } from "@/lib/gemini";
-import { getPengaturanToko } from "@/lib/pengaturan";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { createSupabasePublicClient } from "@/lib/supabase/server";
 
 const MAX_PERTANYAAN_CHARS = 300;
 
-async function ambilKonteksGerai() {
-  const [pengaturan, supabase] = await Promise.all([
-    getPengaturanToko(),
-    Promise.resolve(createSupabasePublicClient()),
-  ]);
+async function ambilKonteksProduk() {
+  const supabase = createSupabasePublicClient();
 
-  const [produkRes, mesinRes] = await Promise.all([
-    supabase
-      .from("produk")
-      .select(
-        "id, nama, kategori, harga, harga_coret, badge, max_capacity_kg, cycle_duration_minutes, requires_washer, requires_dryer, stok, varian, deskripsi"
-      )
-      .eq("aktif", true)
-      .order("urutan", { ascending: true })
-      .order("created_at", { ascending: false })
-      .limit(40),
-    supabase
-      .from("machines")
-      .select("id, machine_code, name, type, max_capacity_kg, cycle_duration_minutes, status, booking_mode")
-      .order("type", { ascending: true })
-      .order("machine_code", { ascending: true }),
-  ]);
+  const { data: produkList, error } = await supabase
+    .from("produk")
+    .select(
+      "id, nama, kategori, harga, harga_coret, badge, max_capacity_kg, cycle_duration_minutes, requires_washer, requires_dryer, stok, varian, deskripsi"
+    )
+    .eq("aktif", true)
+    .order("urutan", { ascending: true })
+    .order("created_at", { ascending: false })
+    .limit(50);
 
-  const produkList = produkRes.error ? [] : produkRes.data || [];
-  const mesinList = mesinRes.error ? [] : mesinRes.data || [];
+  if (error || !produkList || produkList.length === 0) {
+    return "Belum ada data paket layanan aktif.";
+  }
 
-  const washerAktif = mesinList.filter((m) => m.type === "WASHER" && m.status === "ACTIVE").length;
-  const washerTotal = mesinList.filter((m) => m.type === "WASHER").length;
-  const dryerAktif = mesinList.filter((m) => m.type === "DRYER" && m.status === "ACTIVE").length;
-  const dryerTotal = mesinList.filter((m) => m.type === "DRYER").length;
+  return produkList
+    .map((p) => {
+      const tipeMesin =
+        [p.requires_washer ? "Washer" : null, p.requires_dryer ? "Dryer" : null]
+          .filter(Boolean)
+          .join(" + ") || "Add-on / Non-mesin";
+      const infoStok = Number(p.stok ?? 10) <= 0 ? "Habis/Penuh" : `Tersedia (${p.stok ?? 10})`;
+      const infoPromo =
+        p.harga_coret && p.harga_coret > p.harga
+          ? ` (harga normal ${formatRupiah(p.harga_coret)})`
+          : "";
+      const infoVarian =
+        Array.isArray(p.varian) && p.varian.length > 0
+          ? ` | Varian: ${p.varian
+              .map(
+                (v) =>
+                  `${v.nama_ukuran} (${v.kapasitas_kg} kg, ${formatRupiah(v.harga)}, ${v.durasi_menit} mnt)`
+              )
+              .join("; ")}`
+          : "";
+      const infoDeskripsi = p.deskripsi ? ` | Deskripsi: ${p.deskripsi}` : "";
 
-  const ringkasanProduk =
-    produkList.length > 0
-      ? produkList
-          .map((p) => {
-            const tipeMesin = [
-              p.requires_washer ? "Washer" : null,
-              p.requires_dryer ? "Dryer" : null,
-            ]
-              .filter(Boolean)
-              .join(" + ") || "Add-on / Non-mesin";
-            const infoStok = Number(p.stok ?? 10) <= 0 ? "Habis/Penuh" : `Stok ${p.stok ?? 10}`;
-            const infoPromo =
-              p.harga_coret && p.harga_coret > p.harga
-                ? ` (harga coret ${formatRupiah(p.harga_coret)})`
-                : "";
-            const infoVarian =
-              Array.isArray(p.varian) && p.varian.length > 0
-                ? ` | Varian: ${p.varian
-                    .map(
-                      (v) =>
-                        `${v.nama_ukuran} (${v.kapasitas_kg} kg, ${formatRupiah(v.harga)}, ${v.durasi_menit} mnt)`
-                    )
-                    .join("; ")}`
-                : "";
-
-            return `- ${p.nama} [${p.kategori || "Layanan"}]: ${formatRupiah(p.harga)}${infoPromo}, maks ${p.max_capacity_kg || 7} kg/tabung, durasi ${p.cycle_duration_minutes || 40} menit, mesin: ${tipeMesin}, ${infoStok}${infoVarian}.`;
-          })
-          .join("\n")
-      : "Belum ada data paket layanan aktif.";
-
-  const ringkasanMesin =
-    mesinList.length > 0
-      ? [
-          `Mesin Cuci (Washer): ${washerAktif} aktif dari ${washerTotal} unit.`,
-          `Mesin Pengering (Dryer): ${dryerAktif} aktif dari ${dryerTotal} unit.`,
-          ...mesinList.map(
-            (m) =>
-              `- ${m.name} (${m.machine_code}, ${m.type}, maks ${m.max_capacity_kg} kg, ${m.cycle_duration_minutes} menit, mode ${m.booking_mode}): status ${m.status}`
-          ),
-        ].join("\n")
-      : "Data unit mesin belum tersedia.";
-
-  const dpInfo =
-    pengaturan.dp_type === "PERCENTAGE"
-      ? `${pengaturan.dp_value}% dari total estimasi`
-      : formatRupiah(pengaturan.dp_value);
-
-  return {
-    namaGerai: pengaturan.nama_gerai,
-    jamOperasional: pengaturan.jam_operasional_label || `${pengaturan.jam_buka} - ${pengaturan.jam_tutup} WIB`,
-    alamat: pengaturan.alamat,
-    dpInfo,
-    bufferMinutes: pengaturan.buffer_minutes ?? 5,
-    ringkasanProduk,
-    ringkasanMesin,
-  };
+      return `- ${p.nama} [${p.kategori || "Layanan"}]: ${formatRupiah(p.harga)}${infoPromo}, maks ${p.max_capacity_kg || 7} kg/tabung, durasi ${p.cycle_duration_minutes || 40} menit, cakupan: ${tipeMesin}, status: ${infoStok}${infoVarian}${infoDeskripsi}`;
+    })
+    .join("\n");
 }
 
 export async function POST(request) {
@@ -135,32 +89,21 @@ export async function POST(request) {
       );
     }
 
-    const konteks = await ambilKonteksGerai();
+    const ringkasanProduk = await ambilKonteksProduk();
 
     const systemInstruction = [
-      `Kamu adalah Asisten Layanan pelanggan untuk gerai coin laundry "${konteks.namaGerai}".`,
-      "Tugasmu membantu pengunjung memilih paket layanan, menghitung perkiraan jumlah tabung berdasarkan berat cucian, dan memberi informasi ketersediaan mesin.",
+      "Kamu adalah Asisten Layanan pelanggan untuk gerai coin laundry Laundro.",
+      "Tugasmu membantu pengunjung memilih paket layanan dan menghitung perkiraan jumlah tabung serta total biaya berdasarkan data katalog produk.",
       "",
       "Aturan ketat:",
-      "1. Jawab HANYA berdasarkan DATA GERAI di bawah ini. Jangan pernah mengarang harga, nama paket, atau status mesin yang tidak tercantum.",
-      "2. Jika pengunjung menyebut berat cucian (misal 9 kg) dan kapasitas tabung paket 7 kg, jelaskan kebutuhan jumlah tabung dengan rumus pembulatan ke atas (contoh: 9 kg / 7 kg = 2 tabung) beserta total biayanya, atau rekomendasikan varian Jumbo/Extra jika tersedia di data paket.",
-      "3. Sampaikan juga bahwa berat aktual akan dikonfirmasi di timbangan digital gerai saat kedatangan.",
-      "4. Gunakan bahasa Indonesia yang ramah, ringkas (maksimal 5 kalimat), jelas, dan berbasis fakta.",
-      "5. Dilarang memakai karakter em-dash atau en-dash, dilarang memakai HTML, dan hindari emoji berlebihan.",
-      "6. Jika pertanyaan di luar topik laundry atau data tidak tersedia, arahkan pengunjung dengan sopan untuk menghubungi gerai lewat tombol WhatsApp atau mengecek halaman /antrean.",
+      "1. Jawab HANYA berdasarkan DAFTAR PRODUK AKTIF di bawah ini. Jangan pernah mengarang harga, nama paket, atau spesifikasi yang tidak tercantum.",
+      "2. Jika pengunjung menyebut berat cucian (misal 9 kg) dan kapasitas tabung paket 7 kg, hitung kebutuhan jumlah tabung dengan pembulatan ke atas (contoh: 9 kg / 7 kg = 2 tabung) beserta total biayanya, atau rekomendasikan varian ukuran yang sesuai jika tersedia di data produk.",
+      "3. Gunakan bahasa Indonesia yang ramah, ringkas (maksimal 5 kalimat), jelas, dan akurat.",
+      "4. Dilarang memakai karakter em-dash atau en-dash, dilarang memakai HTML, dan hindari emoji berlebihan.",
+      "5. Jika pertanyaan di luar katalog produk atau data tidak tersedia, sampaikan dengan jujur dan arahkan pengunjung memilih dari paket yang tersedia.",
       "",
-      "DATA GERAI:",
-      `Nama Gerai: ${konteks.namaGerai}`,
-      `Jam Operasional: ${konteks.jamOperasional}`,
-      `Alamat: ${konteks.alamat}`,
-      `Aturan DP: ${konteks.dpInfo}`,
-      `Buffer perpindahan Washer ke Dryer: ${konteks.bufferMinutes} menit`,
-      "",
-      "DAFTAR PAKET LAYANAN AKTIF:",
-      konteks.ringkasanProduk,
-      "",
-      "STATUS INVENTARIS MESIN:",
-      konteks.ringkasanMesin,
+      "DAFTAR PRODUK AKTIF:",
+      ringkasanProduk,
     ].join("\n");
 
     const prompt = `Pertanyaan pengunjung:\n"${pertanyaan}"`;

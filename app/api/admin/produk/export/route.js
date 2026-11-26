@@ -36,17 +36,36 @@ export async function GET() {
   }
 
   try {
-    const { data: rows, error } = await session.supabase
-      .from("produk")
-      .select(
-        "id, nama, kategori, harga, harga_coret, badge, max_capacity_kg, cycle_duration_minutes, stok, aktif, urutan, requires_washer, requires_dryer, foto_url, deskripsi, created_at"
-      )
-      .order("urutan", { ascending: true })
-      .order("created_at", { ascending: false });
+    const BATCH_SIZE = 1000;
+    const allRows = [];
+    let offset = 0;
 
-    if (error) {
-      return NextResponse.json({ error: "Gagal mengambil data produk." }, { status: 500 });
+    while (true) {
+      const { data: batch, error } = await session.supabase
+        .from("produk")
+        .select(
+          "id, nama, kategori, harga, harga_coret, badge, max_capacity_kg, cycle_duration_minutes, stok, aktif, urutan, requires_washer, requires_dryer, foto_url, deskripsi, created_at"
+        )
+        .order("urutan", { ascending: true })
+        .order("created_at", { ascending: false })
+        .range(offset, offset + BATCH_SIZE - 1);
+
+      if (error) {
+        return NextResponse.json({ error: "Gagal mengambil data produk." }, { status: 500 });
+      }
+
+      if (!batch || batch.length === 0) {
+        break;
+      }
+
+      allRows.push(...batch);
+      if (batch.length < BATCH_SIZE) {
+        break;
+      }
+      offset += BATCH_SIZE;
     }
+
+    const rows = allRows;
 
     const headers = [
       "id",

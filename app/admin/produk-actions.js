@@ -29,8 +29,30 @@ async function uploadFotoKeStorage(supabase, fileCheck) {
   return { url: data.publicUrl };
 }
 
+function ambilNilaiFormProduk(formData) {
+  return {
+    nama: String(formData.get("nama") || ""),
+    kategori: String(formData.get("kategori") || ""),
+    badge: String(formData.get("badge") || ""),
+    harga: String(formData.get("harga") || ""),
+    harga_coret: String(formData.get("harga_coret") || ""),
+    max_capacity_kg: String(formData.get("max_capacity_kg") || ""),
+    cycle_duration_minutes: String(formData.get("cycle_duration_minutes") || ""),
+    stok: String(formData.get("stok") || ""),
+    urutan: String(formData.get("urutan") || ""),
+    foto_url: String(formData.get("foto_url") || ""),
+    deskripsi: String(formData.get("deskripsi") || ""),
+    aktif: formData.get("aktif") === "on" || formData.get("aktif") === "true",
+    requires_washer:
+      formData.get("requires_washer") === "on" || formData.get("requires_washer") === "true",
+    requires_dryer:
+      formData.get("requires_dryer") === "on" || formData.get("requires_dryer") === "true",
+  };
+}
+
 export async function tambahProdukAction(_prevState, formData) {
   const { supabase, user } = await requireSuperAdmin();
+  const values = ambilNilaiFormProduk(formData);
 
   let berhasil = false;
 
@@ -47,6 +69,7 @@ export async function tambahProdukAction(_prevState, formData) {
       return {
         error: "Periksa kembali isian formulir yang ditandai.",
         errors,
+        values,
       };
     }
 
@@ -57,6 +80,7 @@ export async function tambahProdukAction(_prevState, formData) {
         return {
           error: uploaded.error,
           errors: { foto_file: uploaded.error },
+          values,
         };
       }
       finalFotoUrl = uploaded.url;
@@ -72,7 +96,7 @@ export async function tambahProdukAction(_prevState, formData) {
       .maybeSingle();
 
     if (error) {
-      return { error: "Gagal menyimpan paket layanan baru ke database." };
+      return { error: "Gagal menyimpan paket layanan baru ke database.", values };
     }
 
     await catatLogAdmin({
@@ -100,10 +124,11 @@ export async function tambahProdukAction(_prevState, formData) {
 
 export async function ubahProdukAction(_prevState, formData) {
   const { supabase, user } = await requireSuperAdmin();
+  const values = ambilNilaiFormProduk(formData);
 
   const idRaw = String(formData.get("id") || "").trim();
   if (!/^\d+$/.test(idRaw)) {
-    return { error: "ID paket layanan tidak valid." };
+    return { error: "ID paket layanan tidak valid.", values };
   }
   const produkId = Number(idRaw);
 
@@ -122,6 +147,7 @@ export async function ubahProdukAction(_prevState, formData) {
       return {
         error: "Periksa kembali isian formulir yang ditandai.",
         errors,
+        values,
       };
     }
 
@@ -132,6 +158,7 @@ export async function ubahProdukAction(_prevState, formData) {
         return {
           error: uploaded.error,
           errors: { foto_file: uploaded.error },
+          values,
         };
       }
       finalFotoUrl = uploaded.url;
@@ -146,7 +173,7 @@ export async function ubahProdukAction(_prevState, formData) {
       .eq("id", produkId);
 
     if (error) {
-      return { error: "Gagal memperbarui data paket layanan." };
+      return { error: "Gagal memperbarui data paket layanan.", values };
     }
 
     await catatLogAdmin({

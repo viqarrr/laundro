@@ -44,7 +44,7 @@ export async function generateMetadata({ params }) {
 
 async function ambilDetailDanTerkait(id) {
   if (!/^\d+$/.test(String(id))) {
-    return { produk: null, terkait: [] };
+    return { produk: null, terkait: [], ulasanList: [], kategoriSlugMap: {}, activeIds: [] };
   }
 
   const produkId = Number(id);
@@ -52,7 +52,7 @@ async function ambilDetailDanTerkait(id) {
   try {
     const supabase = createSupabasePublicClient();
 
-    const [produkRes, mesinRes, ulasanRes] = await Promise.all([
+    const [produkRes, mesinRes, ulasanRes, kategoriRes, activeIdsRes] = await Promise.all([
       supabase
         .from("produk")
         .select(
@@ -69,10 +69,12 @@ async function ambilDetailDanTerkait(id) {
         .eq("status", "approved")
         .order("created_at", { ascending: false })
         .limit(30),
+      supabase.from("kategori").select("nama, slug"),
+      supabase.from("produk").select("id").eq("aktif", true),
     ]);
 
     if (produkRes.error || !produkRes.data) {
-      return { produk: null, terkait: [], ulasanList: [] };
+      return { produk: null, terkait: [], ulasanList: [], kategoriSlugMap: {}, activeIds: [] };
     }
 
     const machines = mesinRes.data || [];
@@ -80,28 +82,7 @@ async function ambilDetailDanTerkait(id) {
     const washerAktif = machines.filter((m) => m.type === "WASHER" && m.status === "ACTIVE").length;
     const dryerAktif = machines.filter((m) => m.type === "DRYER" && m.status === "ACTIVE").length;
 
-    let produk = produkRes.data;
-    if (
-      adaDataMesin &&
-      ((produk.requires_washer && washerAktif === 0) ||
-        (produk.requires_dryer && dryerAktif === 0))
-    ) {
-      produk = { ...produk, stok: 0 };
-    }
-
-    // Ambil maksimal 4 layanan terkait aktif (kategori sama atau Add-on, kecualikan ID aktif)
-    const { data: kandidatTerkait } = await supabase
-      .from("produk")
-      .select(
-        "id, nama, harga, harga_coret, badge, deskripsi, foto_url, kategori, max_capacity_kg, cycle_duration_minutes, requires_washer, requires_dryer, stok, aktif, urutan, created_at"
-      )
-      .eq("aktif", true)
-      .neq("id", produkId)
-      .order("urutan", { ascending: true })
-      .order("created_at", { ascending: false })
-      .limit(12);
-
-    const semuaKandidat = (kandidatTerkait || []).map((item) => {
+    const applyMachineStock = (item) => {
       if (!adaDataMesin) return item;
       if (
         (item.requires_washer && washerAktif === 0) ||
@@ -110,25 +91,73 @@ async function ambilDetailDanTerkait(id) {
         return { ...item, stok: 0 };
       }
       return item;
-    });
+    };
 
-    const prioritas = semuaKandidat.filter(
-      (item) =>
-        item.kategori === produk.kategori ||
-        String(item.kategori || "").toLowerCase().includes("add-on")
-    );
-    const cadangan = semuaKandidat.filter((item) => !prioritas.some((p) => p.id === item.id));
-    const terkait = [...prioritas, ...cadangan].slice(0, 4);
+    const produk = applyMachineStock(produkRes.data);
 
-    return { produk, terkait, ulasanList: ulasanRes.data || [] };
+    // US-17: Ambil maksimal 4 layanan terkait, prioritaskan kategori yang sama terlebih dahulu tanpa limit pra-filter
+    const selectFieldsTerkait =
+      "id, nama, harga, harga_coret, badge, deskripsi, foto_url, kategori, max_capacity_kg, cycle_duration_minutes, requires_washer, requires_dryer, stok, aktif, urutan, created_at";
+
+    let sameCategory = [];
+    if (produk.kategori) {
+      const { data: sameCatRows } = await supabase
+        .from("produk")
+        .select(selectFieldsTerkait)
+        .eq("aktif", true)
+        .eq("kategori", produk.kategori)
+        .neq("id", produkId)
+        .order("urutan", { ascending: true })
+        .order("created_at", { ascending: false })
+        .limit(4);
+      sameCategory = (sameCatRows || []).map(applyMachineStock);
+    }
+
+    let terkait = sameCategory;
+    if (terkait.length < 4) {
+      const excludeIds = [produkId, ...terkait.map((t) => t.id)];
+      let fallbackQuery = supabase
+        .from("produk")
+        .select(selectFieldsTerkait)
+        .eq("aktif", true)
+        .not("id", "in", `(${excludeIds.join(",")})`)
+        .order("urutan", { ascending: true })
+        .order("created_at", { ascending: false })
+        .limit(8);
+
+      const { data: cadanganRows } = await fallbackQuery;
+      const cadangan = (cadanganRows || []).map(applyMachineStock);
+      const addOnFirst = [
+        ...cadangan.filter((item) => String(item.kategori || "").toLowerCase().includes("add-on")),
+        ...cadangan.filter((item) => !String(item.kategori || "").toLowerCase().includes("add-on")),
+      ];
+      terkait = [...terkait, ...addOnFirst].slice(0, 4);
+    }
+
+    const kategoriSlugMap = {};
+    for (const k of kategoriRes.data || []) {
+      if (k.nama && k.slug) {
+        kategoriSlugMap[k.nama.toLowerCase()] = k.slug;
+      }
+    }
+
+    const activeIds = (activeIdsRes.data || []).map((r) => r.id);
+
+    return {
+      produk,
+      terkait,
+      ulasanList: ulasanRes.data || [],
+      kategoriSlugMap,
+      activeIds,
+    };
   } catch {
-    return { produk: null, terkait: [], ulasanList: [] };
+    return { produk: null, terkait: [], ulasanList: [], kategoriSlugMap: {}, activeIds: [] };
   }
 }
 
 export default async function HalamanDetailProduk({ params }) {
   const { id } = await params;
-  const [{ produk, terkait, ulasanList }, pengaturan] = await Promise.all([
+  const [{ produk, terkait, ulasanList, kategoriSlugMap, activeIds }, pengaturan] = await Promise.all([
     ambilDetailDanTerkait(id),
     getPengaturanToko(),
   ]);
@@ -136,6 +165,17 @@ export default async function HalamanDetailProduk({ params }) {
   if (!produk) {
     notFound();
   }
+
+  const slugKategoriProduk = produk.kategori
+    ? kategoriSlugMap[produk.kategori.toLowerCase()] ||
+      produk.kategori
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "")
+    : null;
 
   return (
     <div id="detail-produk-fokus" tabIndex={-1} className="py-10 sm:py-12 focus:outline-none">
@@ -155,7 +195,14 @@ export default async function HalamanDetailProduk({ params }) {
 
         <div className="flex flex-col gap-5">
           <div className="flex flex-wrap items-center gap-2">
-            {produk.kategori ? (
+            {produk.kategori && slugKategoriProduk ? (
+              <Link
+                href={`/kategori/${slugKategoriProduk}`}
+                className="rounded-full bg-permukaan px-3 py-1 text-xs font-semibold text-utama transition-colors hover:bg-utama-lembut"
+              >
+                {produk.kategori}
+              </Link>
+            ) : produk.kategori ? (
               <span className="rounded-full bg-permukaan px-3 py-1 text-xs font-semibold text-teks-lembut">
                 {produk.kategori}
               </span>
@@ -236,14 +283,20 @@ export default async function HalamanDetailProduk({ params }) {
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {terkait.map((item) => (
-              <KartuProduk key={item.id} produk={item} />
+              <KartuProduk
+                key={item.id}
+                produk={item}
+                kategoriSlug={
+                  kategoriSlugMap[String(item.kategori || "").toLowerCase()] || null
+                }
+              />
             ))}
           </div>
         </section>
       ) : null}
 
       <div className="mt-12">
-        <TerakhirDilihat excludeId={produk.id} />
+        <TerakhirDilihat excludeId={produk.id} activeIds={activeIds} />
       </div>
     </div>
   );

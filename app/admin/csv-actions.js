@@ -54,7 +54,10 @@ function parseCsvRows(text) {
     rows.push(currentRow);
   }
 
-  return rows.filter((r) => r.some((cell) => String(cell || "").trim() !== ""));
+  // Simpan nomor baris asli (1-based) sebelum menyaring baris kosong agar laporan nomor baris akurat
+  return rows
+    .map((cells, idx) => ({ lineNumber: idx + 1, cells }))
+    .filter((entry) => entry.cells.some((cell) => String(cell || "").trim() !== ""));
 }
 
 function toBooleanOnOff(raw, defaultBool = false) {
@@ -96,7 +99,7 @@ export async function imporProdukCsvAction(_prevState, formData) {
       };
     }
 
-    const headers = parsedRows[0].map((h) => String(h || "").trim().toLowerCase());
+    const headers = parsedRows[0].cells.map((h) => String(h || "").trim().toLowerCase());
     const requiredCols = ["nama", "kategori", "harga", "deskripsi"];
     const missingCols = requiredCols.filter((c) => !headers.includes(c));
     if (missingCols.length > 0) {
@@ -106,16 +109,26 @@ export async function imporProdukCsvAction(_prevState, formData) {
       };
     }
 
-    const dataRows = parsedRows.slice(1, 1 + MAX_CSV_ROWS);
+    const allDataRows = parsedRows.slice(1);
     const validRecords = [];
     const gagalList = [];
 
-    dataRows.forEach((cells, idx) => {
-      const barisKe = idx + 2;
+    allDataRows.forEach((entry, idx) => {
+      const barisKe = entry.lineNumber;
+      const cells = entry.cells;
       const rowObj = {};
       headers.forEach((key, colIdx) => {
         rowObj[key] = cells[colIdx] ?? "";
       });
+
+      if (idx >= MAX_CSV_ROWS) {
+        gagalList.push({
+          baris: barisKe,
+          nama: String(rowObj.nama || "-"),
+          alasan: `Melebihi batas maksimal ${MAX_CSV_ROWS} baris data per impor.`,
+        });
+        return;
+      }
 
       const fd = new FormData();
       fd.set("nama", String(rowObj.nama || ""));

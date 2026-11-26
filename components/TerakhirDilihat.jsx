@@ -4,14 +4,19 @@ import Link from "next/link";
 import { useUserPrefs } from "@/components/UserPrefsProvider";
 import { formatRupiah } from "@/lib/format";
 
-export default function TerakhirDilihat({ excludeId = null }) {
+export default function TerakhirDilihat({ excludeId = null, activeIds = null }) {
   const { hydrated, recentItems } = useUserPrefs();
 
   if (!hydrated) return null;
 
-  const items = recentItems.filter((item) =>
-    excludeId ? Number(item.id) !== Number(excludeId) : true
-  );
+  const activeSet = Array.isArray(activeIds) ? new Set(activeIds.map(Number)) : null;
+
+  const items = recentItems.filter((item) => {
+    const idNum = Number(item.id);
+    if (excludeId && idNum === Number(excludeId)) return false;
+    if (activeSet && !activeSet.has(idNum)) return false;
+    return true;
+  });
 
   if (items.length === 0) return null;
 

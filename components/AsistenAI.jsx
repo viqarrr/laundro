@@ -7,8 +7,8 @@ const MAX_CHARS = 300;
 
 const SARAN_PERTANYAAN = [
   "Cucian saya 9 kg, pilih paket apa?",
-  "Berapa biaya cuci + kering dan DP?",
-  "Ada mesin apa saja yang aktif?",
+  "Berapa biaya paket cuci + kering?",
+  "Ada paket kapasitas jumbo?",
 ];
 
 export default function AsistenAI() {

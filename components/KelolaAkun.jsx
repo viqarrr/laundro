@@ -21,7 +21,11 @@ function FieldError({ message }) {
   return <p className="text-xs font-medium text-bahaya">{message}</p>;
 }
 
-export default function KelolaAkun({ daftarAkun = [], currentUserId }) {
+export default function KelolaAkun({
+  daftarAkun = [],
+  currentUserId,
+  currentUserEmail = "",
+}) {
   const router = useRouter();
   const formRef = useRef(null);
   const [state, formAction, isPending] = useActionState(tambahAkunAdminAction, null);
@@ -157,7 +161,11 @@ export default function KelolaAkun({ daftarAkun = [], currentUserId }) {
             </thead>
             <tbody>
               {daftarAkun.map((akun) => {
-                const isSelf = akun.user_id === currentUserId;
+                const isSelf =
+                  akun.user_id === currentUserId ||
+                  (currentUserEmail &&
+                    String(akun.email || "").toLowerCase() ===
+                      String(currentUserEmail).toLowerCase());
                 return (
                   <tr key={akun.user_id} className="border-t border-garis">
                     <td className="px-4 py-3.5">

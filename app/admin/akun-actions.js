@@ -117,11 +117,23 @@ export async function ubahRoleAkunAction(userId, nextRole) {
     return { ok: false, error: "Permintaan perubahan peran tidak valid." };
   }
 
-  if (userId === session.user.id && nextRole !== "SUPERADMIN") {
-    return { ok: false, error: "Anda tidak dapat menurunkan peran akun Anda sendiri." };
-  }
-
   try {
+    const { data: targetAkun } = await session.supabase
+      .from("admin_profiles")
+      .select("user_id, email")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const selfEmail = String(session.profile?.email || session.user.email || "").toLowerCase();
+    const isSelfTarget =
+      userId === session.user.id ||
+      userId === session.profile?.user_id ||
+      (targetAkun?.email && String(targetAkun.email).toLowerCase() === selfEmail);
+
+    if (isSelfTarget && nextRole !== "SUPERADMIN") {
+      return { ok: false, error: "Anda tidak dapat menurunkan peran akun Anda sendiri." };
+    }
+
     const { error } = await session.supabase
       .from("admin_profiles")
       .update({ role: nextRole })
@@ -159,11 +171,23 @@ export async function toggleAktifAkunAction(userId, nextAktif) {
     return { ok: false, error: "ID akun tidak valid." };
   }
 
-  if (userId === session.user.id && !nextAktif) {
-    return { ok: false, error: "Anda tidak dapat menonaktifkan akun Anda sendiri." };
-  }
-
   try {
+    const { data: targetAkun } = await session.supabase
+      .from("admin_profiles")
+      .select("user_id, email")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const selfEmail = String(session.profile?.email || session.user.email || "").toLowerCase();
+    const isSelfTarget =
+      userId === session.user.id ||
+      userId === session.profile?.user_id ||
+      (targetAkun?.email && String(targetAkun.email).toLowerCase() === selfEmail);
+
+    if (isSelfTarget && !nextAktif) {
+      return { ok: false, error: "Anda tidak dapat menonaktifkan akun Anda sendiri." };
+    }
+
     const { error } = await session.supabase
       .from("admin_profiles")
       .update({ aktif: Boolean(nextAktif) })

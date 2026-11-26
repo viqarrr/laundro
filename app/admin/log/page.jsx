@@ -5,7 +5,8 @@ import { requireSuperAdmin } from "@/lib/supabase/session";
 
 export const dynamic = "force-dynamic";
 
-const PER_PAGE = 15;
+const MAX_LATEST_LOGS = 50;
+const PER_PAGE = 50;
 
 function buatUrlLog({ aksi, page }) {
   const params = new URLSearchParams();
@@ -37,25 +38,26 @@ export default async function HalamanLogAdmin({ searchParams }) {
 
   let query = supabase
     .from("admin_logs")
-    .select("id, admin_email, aksi, entitas, entitas_id, detail, created_at", {
-      count: "exact",
-    });
+    .select("id, admin_email, aksi, entitas, entitas_id, detail, created_at");
 
   if (aksiFilter) {
     query = query.eq("aksi", aksiFilter);
   }
 
-  const from = (currentPage - 1) * PER_PAGE;
-  const to = from + PER_PAGE - 1;
-
-  const [{ data, count, error }, { data: aksiRows }] = await Promise.all([
-    query.order("created_at", { ascending: false }).range(from, to),
-    supabase.from("admin_logs").select("aksi").order("created_at", { ascending: false }).limit(100),
+  const [{ data, error }, { data: aksiRows }] = await Promise.all([
+    query.order("created_at", { ascending: false }).limit(MAX_LATEST_LOGS),
+    supabase
+      .from("admin_logs")
+      .select("aksi")
+      .order("created_at", { ascending: false })
+      .limit(MAX_LATEST_LOGS),
   ]);
 
-  const daftarLog = error ? [] : data || [];
-  const totalCount = error ? 0 : count || 0;
+  const allLatest = error ? [] : data || [];
+  const totalCount = allLatest.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
+  const from = (currentPage - 1) * PER_PAGE;
+  const daftarLog = allLatest.slice(from, from + PER_PAGE);
   const daftarAksi = Array.from(new Set((aksiRows || []).map((r) => r.aksi).filter(Boolean)));
 
   return (

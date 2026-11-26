@@ -86,42 +86,41 @@ export default async function HalamanAdmin({ searchParams }) {
   const waClicks = waClicksRes.data || [];
   const totalWaClicks = waClicks.length;
 
-  // Agregasi Layanan Terlaris berdasarkan wa_clicks + bookings (US-41)
-  const produkMap = new Map((allProdukRes.data || []).map((p) => [p.id, p]));
-  const statsMap = new Map();
+  // Agregasi Layanan Terlaris strictly berdasarkan klik WhatsApp (US-41) + jumlah produk per kategori (US-30)
+  const allProdukList = allProdukRes.data || [];
+  const produkMap = new Map(allProdukList.map((p) => [p.id, p]));
+  const clicksMap = new Map();
 
   for (const row of waClicks) {
     if (!row.produk_id) continue;
-    const prev = statsMap.get(row.produk_id) || { clicks: 0, bookings: 0 };
-    prev.clicks += 1;
-    statsMap.set(row.produk_id, prev);
+    clicksMap.set(row.produk_id, (clicksMap.get(row.produk_id) || 0) + 1);
   }
 
-  for (const row of bookingsProdRes.data || []) {
-    if (!row.service_product_id) continue;
-    const prev = statsMap.get(row.service_product_id) || { clicks: 0, bookings: 0 };
-    prev.bookings += 1;
-    statsMap.set(row.service_product_id, prev);
-  }
-
-  const layananTerlaris = Array.from(statsMap.entries())
-    .map(([produkId, counts]) => {
+  const layananTerlaris = Array.from(clicksMap.entries())
+    .map(([produkId, clicks]) => {
       const info = produkMap.get(produkId);
-      if (!info) return null;
+      if (!info || clicks <= 0) return null;
       return {
         id: produkId,
         nama: info.nama,
         kategori: info.kategori,
-        clicks: counts.clicks,
-        bookings: counts.bookings,
-        total: counts.clicks + counts.bookings,
+        clicks,
       };
     })
     .filter(Boolean)
-    .sort((a, b) => b.total - a.total)
+    .sort((a, b) => b.clicks - a.clicks)
     .slice(0, 5);
 
-  const maxTerlaris = layananTerlaris[0]?.total || 1;
+  const maxTerlaris = layananTerlaris[0]?.clicks || 1;
+
+  const kategoriCountMap = new Map();
+  for (const p of allProdukList) {
+    const kat = String(p.kategori || "Lainnya").trim() || "Lainnya";
+    kategoriCountMap.set(kat, (kategoriCountMap.get(kat) || 0) + 1);
+  }
+  const kategoriStats = Array.from(kategoriCountMap.entries())
+    .map(([nama, jumlah]) => ({ nama, jumlah }))
+    .sort((a, b) => b.jumlah - a.jumlah);
 
   return (
     <div className="flex flex-col gap-6 py-8">
@@ -175,48 +174,82 @@ export default async function HalamanAdmin({ searchParams }) {
         </article>
       </section>
 
-      {/* Widget Layanan Terlaris / Terpopuler (US-41) */}
-      <section className="rounded-[20px] border border-garis bg-latar p-5 sm:p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-base font-semibold text-teks">Layanan Terpopuler</h2>
-            <p className="text-xs text-teks-lembut">
-              Berdasarkan gabungan klik WhatsApp dan reservasi masuk.
-            </p>
+      {/* Jumlah Produk per Kategori (US-30) & Layanan Terpopuler (US-41) */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-[20px] border border-garis bg-latar p-5 sm:p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-base font-semibold text-teks">Produk per Kategori</h2>
+              <p className="text-xs text-teks-lembut">
+                Distribusi jumlah paket layanan pada tiap kategori.
+              </p>
+            </div>
+            <span className="numeric rounded-full bg-permukaan px-3 py-1 text-xs font-semibold text-teks-lembut">
+              {kategoriStats.length} kategori
+            </span>
           </div>
-          <span className="numeric rounded-full bg-permukaan px-3 py-1 text-xs font-semibold text-teks-lembut">
-            Top {layananTerlaris.length}
-          </span>
-        </div>
 
-        {layananTerlaris.length === 0 ? (
-          <p className="text-sm text-teks-lembut">
-            Belum ada interaksi klik WhatsApp atau booking yang tercatat.
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {layananTerlaris.map((item) => {
-              const widthPct = Math.max(8, Math.round((item.total / maxTerlaris) * 100));
-              return (
-                <li key={item.id} className="flex flex-col gap-1.5">
-                  <div className="flex items-baseline justify-between gap-3 text-sm">
-                    <span className="truncate font-semibold text-teks">{item.nama}</span>
-                    <span className="numeric shrink-0 text-xs font-medium text-teks-lembut">
-                      {item.clicks} klik WA · {item.bookings} booking ({item.total})
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-permukaan">
-                    <div
-                      className="h-full rounded-full bg-utama transition-all"
-                      style={{ width: `${widthPct}%` }}
-                    />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+          {kategoriStats.length === 0 ? (
+            <p className="text-sm text-teks-lembut">Belum ada produk tersimpan.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2.5">
+              {kategoriStats.map((kat) => (
+                <div
+                  key={kat.nama}
+                  className="flex items-center justify-between gap-2 rounded-[14px] border border-garis bg-permukaan px-3.5 py-2.5 text-sm"
+                >
+                  <span className="truncate font-medium text-teks">{kat.nama}</span>
+                  <span className="numeric shrink-0 rounded-full bg-latar px-2.5 py-0.5 text-xs font-semibold text-utama">
+                    {kat.jumlah}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-[20px] border border-garis bg-latar p-5 sm:p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-base font-semibold text-teks">Layanan Terpopuler</h2>
+              <p className="text-xs text-teks-lembut">
+                Berdasarkan jumlah klik tombol WhatsApp terbanyak.
+              </p>
+            </div>
+            <span className="numeric rounded-full bg-permukaan px-3 py-1 text-xs font-semibold text-teks-lembut">
+              Top {layananTerlaris.length}
+            </span>
+          </div>
+
+          {layananTerlaris.length === 0 ? (
+            <p className="text-sm text-teks-lembut">
+              Belum ada klik WhatsApp yang tercatat.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {layananTerlaris.map((item) => {
+                const widthPct = Math.max(8, Math.round((item.clicks / maxTerlaris) * 100));
+                return (
+                  <li key={item.id} className="flex flex-col gap-1.5">
+                    <div className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="truncate font-semibold text-teks">{item.nama}</span>
+                      <span className="numeric shrink-0 text-xs font-medium text-teks-lembut">
+                        {item.clicks} klik WA
+                      </span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-permukaan">
+                      <div
+                        className="h-full rounded-full bg-utama transition-all"
+                        style={{ width: `${widthPct}%` }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      </div>
 
       {/* Manajemen Paket Layanan */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2">

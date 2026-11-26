@@ -28,7 +28,17 @@ function getStatusStok(stok) {
   };
 }
 
-export default function KartuProduk({ produk }) {
+function buatSlugKategori(nama) {
+  return String(nama || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export default function KartuProduk({ produk, kategoriSlug = null }) {
   const adaPromo = Number(produk.harga_coret) > Number(produk.harga);
   const persenHemat = adaPromo
     ? Math.round(((produk.harga_coret - produk.harga) / produk.harga_coret) * 100)
@@ -36,9 +46,9 @@ export default function KartuProduk({ produk }) {
 
   const statusStok = getStatusStok(produk.stok);
   const isDarkMedia = typeof produk.foto_url === "string" && produk.foto_url.includes("dark-drum");
+  const slugKat = kategoriSlug || buatSlugKategori(produk.kategori);
 
-  const infoMesin = [
-    produk.kategori || null,
+  const spesifikasi = [
     produk.max_capacity_kg ? `${produk.max_capacity_kg} kg` : null,
     produk.cycle_duration_minutes ? `${produk.cycle_duration_minutes} mnt` : null,
   ]
@@ -81,8 +91,21 @@ export default function KartuProduk({ produk }) {
           </span>
         </div>
 
-        {infoMesin ? (
-          <span className="numeric text-[13px] font-medium text-teks-lembut">{infoMesin}</span>
+        {produk.kategori || spesifikasi ? (
+          <div className="numeric flex flex-wrap items-center gap-1.5 text-[13px] font-medium text-teks-lembut">
+            {produk.kategori && slugKat ? (
+              <Link
+                href={`/kategori/${slugKat}`}
+                className="text-utama hover:underline underline-offset-4"
+              >
+                {produk.kategori}
+              </Link>
+            ) : produk.kategori ? (
+              <span>{produk.kategori}</span>
+            ) : null}
+            {produk.kategori && spesifikasi ? <span aria-hidden="true">·</span> : null}
+            {spesifikasi ? <span>{spesifikasi}</span> : null}
+          </div>
         ) : null}
 
         <Link href={`/produk/${produk.id}`}>

@@ -214,7 +214,34 @@ export async function hapusKategoriAction(id) {
   }
 
   try {
-    const { error } = await supabase.from("kategori").delete().eq("id", Number(id));
+    const kategoriId = Number(id);
+    const { data: kat } = await supabase
+      .from("kategori")
+      .select("id, nama")
+      .eq("id", kategoriId)
+      .maybeSingle();
+
+    if (!kat) {
+      return { ok: false, error: "Kategori tidak ditemukan." };
+    }
+
+    const { count: usedCount, error: countErr } = await supabase
+      .from("produk")
+      .select("id", { count: "exact", head: true })
+      .eq("kategori", kat.nama);
+
+    if (countErr) {
+      return { ok: false, error: "Gagal memeriksa penggunaan kategori pada paket layanan." };
+    }
+
+    if ((usedCount ?? 0) > 0) {
+      return {
+        ok: false,
+        error: `Kategori "${kat.nama}" masih dipakai oleh ${usedCount} paket layanan. Ubah kategori paket tersebut terlebih dahulu sebelum menghapus.`,
+      };
+    }
+
+    const { error } = await supabase.from("kategori").delete().eq("id", kategoriId);
     if (error) {
       return { ok: false, error: "Gagal menghapus kategori." };
     }

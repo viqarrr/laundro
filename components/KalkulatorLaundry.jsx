@@ -106,11 +106,23 @@ export default function KalkulatorLaundry({ produk, pengaturan = null }) {
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Harga Aktif & Spesifikasi Singkat */}
+      {/* Harga Aktif, Harga Coret Promo & Spesifikasi Singkat */}
       <div className="flex flex-wrap items-baseline gap-3">
         <span className="numeric text-[28px] font-semibold leading-[34px] tracking-[-0.015em] text-teks">
           {formatRupiah(hargaSatuan)}
         </span>
+        {Number(produk.harga_coret) > hargaSatuan ? (
+          <>
+            <span className="numeric text-sm text-teks-lembut line-through">
+              {formatRupiah(produk.harga_coret)}
+            </span>
+            <span className="numeric rounded-full bg-harga-latar px-2.5 py-0.5 text-xs font-semibold text-harga">
+              Hemat{" "}
+              {Math.round(((Number(produk.harga_coret) - hargaSatuan) / Number(produk.harga_coret)) * 100)}
+              %
+            </span>
+          </>
+        ) : null}
         <span className="numeric text-xs font-medium text-teks-lembut">
           per tabung/unit ({kapasitasAktif} kg · {durasiAktif} menit)
         </span>

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import CustomSelect from "@/components/CustomSelect";
 import KartuProduk from "@/components/KartuProduk";
 import Tombol from "@/components/Tombol";
@@ -17,13 +18,27 @@ const SORT_OPTIONS = [
   { value: "nama-az", label: "Nama A-Z" },
 ];
 
+function buatUrlKatalog({ q, kategori, sort, limit }) {
+  const params = new URLSearchParams();
+  const trimmed = String(q || "").trim();
+  if (trimmed) params.set("q", trimmed);
+  if (kategori) params.set("kategori", kategori);
+  if (sort && sort !== "bawaan") params.set("sort", sort);
+  if (limit && limit > PAGE_SIZE) params.set("limit", String(limit));
+  const qs = params.toString();
+  return qs ? `/?${qs}` : "/";
+}
+
 export default function KatalogInteraktif({
   daftarProduk = [],
+  totalProdukCount = null,
+  currentLimit = PAGE_SIZE,
   daftarKategori = [],
   initialQuery = "",
   initialKategori = "",
   initialSort = "bawaan",
 }) {
+  const router = useRouter();
   const { hydrated, isFavorite, favoriteCount } = useUserPrefs();
   const [query, setQuery] = useState(initialQuery);
   const [selectedKategori, setSelectedKategori] = useState(initialKategori);
@@ -31,23 +46,23 @@ export default function KatalogInteraktif({
   const [sortBy, setSortBy] = useState(
     SORT_OPTIONS.some((opt) => opt.value === initialSort) ? initialSort : "bawaan"
   );
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [visibleCount, setVisibleCount] = useState(Math.max(PAGE_SIZE, currentLimit));
+  const debounceRef = useRef(null);
 
-  // Sinkronisasi URL query parameter tanpa reload halaman atau lonjakan scroll
   useEffect(() => {
-    const params = new URLSearchParams();
-    const trimmed = query.trim();
-    if (trimmed) params.set("q", trimmed);
-    if (selectedKategori) params.set("kategori", selectedKategori);
-    if (sortBy && sortBy !== "bawaan") params.set("sort", sortBy);
+    setVisibleCount(Math.max(PAGE_SIZE, currentLimit));
+  }, [currentLimit]);
 
-    const qs = params.toString();
-    const nextUrl = qs ? `/?${qs}` : "/";
-    const currentUrl = `${window.location.pathname}${window.location.search}`;
-    if (currentUrl !== nextUrl) {
-      window.history.replaceState(null, "", nextUrl);
-    }
-  }, [query, selectedKategori, sortBy]);
+  function navigasiServer({ q = query, kategori = selectedKategori, sort = sortBy, limit = PAGE_SIZE }) {
+    const nextUrl = buatUrlKatalog({ q, kategori, sort, limit });
+    router.replace(nextUrl, { scroll: false });
+  }
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   const kategoriItems = useMemo(() => {
     if (daftarKategori.length > 0) {
@@ -123,23 +138,54 @@ export default function KatalogInteraktif({
     return sorted;
   }, [daftarProduk, query, selectedKategori, activeCategoryObj, sortBy, onlyFavorites, hydrated, isFavorite]);
 
+  const kategoriSlugMap = useMemo(
+    () => new Map(kategoriItems.map((k) => [k.nama.toLowerCase(), k.slug])),
+    [kategoriItems]
+  );
+
   const displayedItems = filteredAndSorted.slice(0, visibleCount);
-  const hasMore = visibleCount < filteredAndSorted.length;
+  const totalServerOrLocal =
+    !onlyFavorites && totalProdukCount !== null ? totalProdukCount : filteredAndSorted.length;
+  const hasMore =
+    !onlyFavorites && totalProdukCount !== null
+      ? daftarProduk.length < totalProdukCount || visibleCount < filteredAndSorted.length
+      : visibleCount < filteredAndSorted.length;
+  const sisaCount = Math.max(0, totalServerOrLocal - displayedItems.length);
 
   function handleQueryChange(nextVal) {
     setQuery(nextVal);
     setVisibleCount(PAGE_SIZE);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      navigasiServer({ q: nextVal, kategori: selectedKategori, sort: sortBy, limit: PAGE_SIZE });
+    }, 250);
   }
 
   function handleKategoriSelect(katNama) {
     setOnlyFavorites(false);
     setSelectedKategori(katNama);
     setVisibleCount(PAGE_SIZE);
+    navigasiServer({ q: query, kategori: katNama, sort: sortBy, limit: PAGE_SIZE });
   }
 
   function handleSortChange(nextSort) {
     setSortBy(nextSort);
     setVisibleCount(PAGE_SIZE);
+    navigasiServer({ q: query, kategori: selectedKategori, sort: nextSort, limit: PAGE_SIZE });
+  }
+
+  function handleLoadMore() {
+    const nextLimit = Math.max(visibleCount, currentLimit) + PAGE_SIZE;
+    setVisibleCount(nextLimit);
+    if (!onlyFavorites && totalProdukCount !== null && daftarProduk.length < totalProdukCount) {
+      const nextUrl = buatUrlKatalog({
+        q: query,
+        kategori: selectedKategori,
+        sort: sortBy,
+        limit: nextLimit,
+      });
+      router.push(nextUrl, { scroll: false });
+    }
   }
 
   function handleResetAll() {
@@ -148,6 +194,7 @@ export default function KatalogInteraktif({
     setOnlyFavorites(false);
     setSortBy("bawaan");
     setVisibleCount(PAGE_SIZE);
+    navigasiServer({ q: "", kategori: "", sort: "bawaan", limit: PAGE_SIZE });
   }
 
   return (
@@ -277,7 +324,7 @@ export default function KatalogInteraktif({
             </Link>
           ) : (
             <span className="numeric text-xs font-medium text-teks-lembut">
-              Menampilkan {displayedItems.length} dari {filteredAndSorted.length} layanan
+              Menampilkan {displayedItems.length} dari {totalServerOrLocal} layanan
             </span>
           )}
         </div>
@@ -300,19 +347,19 @@ export default function KatalogInteraktif({
         <>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {displayedItems.map((produk) => (
-              <KartuProduk key={produk.id} produk={produk} />
+              <KartuProduk
+                key={produk.id}
+                produk={produk}
+                kategoriSlug={kategoriSlugMap.get(String(produk.kategori || "").toLowerCase()) || null}
+              />
             ))}
           </div>
 
           {/* Tombol Muat Lebih Banyak (US-16) */}
           {hasMore ? (
             <div className="flex flex-col items-center gap-2 pt-2">
-              <Tombol
-                type="button"
-                varian="garis"
-                onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
-              >
-                Muat Lebih Banyak ({filteredAndSorted.length - visibleCount} lagi)
+              <Tombol type="button" varian="garis" onClick={handleLoadMore}>
+                Muat Lebih Banyak ({sisaCount} lagi)
               </Tombol>
             </div>
           ) : null}

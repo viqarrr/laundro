@@ -32,9 +32,10 @@ function validasiPengaturan(formData) {
   }
 
   const waRaw = String(formData.get("nomor_wa") || "").trim();
-  const nomor_wa = normalisasiNomorWa(waRaw);
-  if (!/^\d{9,16}$/.test(nomor_wa) || !waRaw) {
-    errors.nomor_wa = "Nomor WhatsApp wajib diisi (9 hingga 16 digit, mis. 6281234567890).";
+  const waDigits = waRaw.replace(/\D/g, "");
+  const nomor_wa = waDigits ? normalisasiNomorWa(waDigits) : "";
+  if (!waDigits || !/^\d{9,16}$/.test(nomor_wa)) {
+    errors.nomor_wa = "Nomor WhatsApp wajib diisi (9 hingga 16 digit angka, mis. 6281234567890).";
   }
 
   const jam_buka = String(formData.get("jam_buka") || "").trim();

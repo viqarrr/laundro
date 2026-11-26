@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
 import { createSupabasePublicClient } from "@/lib/supabase/server";
 
+const ALLOWED_SUMBER = new Set([
+  "katalog",
+  "detail",
+  "kalkulator",
+  "keranjang",
+  "bandingkan",
+  "tentang",
+  "booking-dp",
+]);
+
 export async function POST(request) {
   try {
     const body = await request.json().catch(() => null);
@@ -18,17 +28,16 @@ export async function POST(request) {
       produkId = parsed;
     }
 
-    const sumber = String(body.sumber || "katalog")
-      .trim()
-      .slice(0, 60);
-    if (!sumber) {
+    const sumberRaw = String(body.sumber || "katalog").trim().toLowerCase();
+    if (!ALLOWED_SUMBER.has(sumberRaw)) {
       return NextResponse.json({ ok: false }, { status: 400 });
     }
 
     const supabase = createSupabasePublicClient();
     const { error } = await supabase.from("wa_clicks").insert({
       produk_id: produkId,
-      sumber,
+      sumber: sumberRaw,
+      created_at: new Date().toISOString(),
     });
 
     if (error) {

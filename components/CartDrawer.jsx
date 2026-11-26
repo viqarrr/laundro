@@ -207,9 +207,18 @@ export default function CartDrawer({ pengaturan = null }) {
                 href={tautanWa}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() =>
-                  catatKlikWa({ produkId: items[0]?.produkId || null, sumber: "keranjang" })
-                }
+                onClick={() => {
+                  const uniqueIds = Array.from(
+                    new Set(items.map((item) => item.produkId).filter(Boolean))
+                  );
+                  if (uniqueIds.length === 0) {
+                    catatKlikWa({ produkId: null, sumber: "keranjang" });
+                    return;
+                  }
+                  uniqueIds.forEach((pid) => {
+                    catatKlikWa({ produkId: pid, sumber: "keranjang" });
+                  });
+                }}
                 className="inline-flex min-h-[44px] flex-1 items-center justify-center rounded-full bg-utama px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-utama-gelap active:scale-[0.98]"
               >
                 Pesan Semua via WhatsApp

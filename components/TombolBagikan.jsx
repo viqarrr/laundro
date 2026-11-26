@@ -3,7 +3,12 @@
 import { useState } from "react";
 
 export default function TombolBagikan({ title, text }) {
-  const [copied, setCopied] = useState(false);
+  const [feedback, setFeedback] = useState("");
+
+  function tampilkanFeedback(pesan) {
+    setFeedback(pesan);
+    setTimeout(() => setFeedback(""), 2500);
+  }
 
   async function handleShare() {
     const shareUrl = typeof window !== "undefined" ? window.location.href : "";
@@ -12,6 +17,7 @@ export default function TombolBagikan({ title, text }) {
     if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
       try {
         await navigator.share({ title, text, url: shareUrl });
+        tampilkanFeedback("Tautan dibagikan");
         return;
       } catch {
         // Jika pengguna membatalkan atau share gagal, lanjut fallback salin clipboard
@@ -21,8 +27,7 @@ export default function TombolBagikan({ title, text }) {
     try {
       if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
         await navigator.clipboard.writeText(shareUrl);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2500);
+        tampilkanFeedback("Tautan disalin");
       }
     } catch {
       // Abaikan jika akses clipboard dibatasi
@@ -46,7 +51,7 @@ export default function TombolBagikan({ title, text }) {
           strokeLinecap="round"
         />
       </svg>
-      <span>{copied ? "Tautan disalin" : "Bagikan"}</span>
+      <span>{feedback || "Bagikan"}</span>
     </button>
   );
 }

@@ -1,12 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import CustomSelect from "@/components/CustomSelect";
 import Input from "@/components/Input";
 import SwitchToggle from "@/components/SwitchToggle";
 import Tombol from "@/components/Tombol";
-
-const KATEGORI_DEFAULT = ["Cuci + Kering", "Cuci Saja", "Kering Saja", "Add-on & Jasa"];
 
 function FieldError({ message }) {
   if (!message) return null;
@@ -21,6 +20,31 @@ export default function FormProduk({
 }) {
   const [state, formAction, isPending] = useActionState(action, null);
   const formRef = useRef(null);
+
+  const dbKategori = daftarKategori.map((k) => k.nama || k).filter(Boolean);
+  const pilihanKategori = Array.from(
+    new Set([...dbKategori, produk.kategori || ""])
+  ).filter(Boolean);
+
+  const [namaInput, setNamaInput] = useState(String(produk.nama || ""));
+  const [kategoriInput, setKategoriInput] = useState(
+    String(produk.kategori || pilihanKategori[0] || "")
+  );
+  const [badgeInput, setBadgeInput] = useState(String(produk.badge || ""));
+  const [hargaInput, setHargaInput] = useState(
+    produk.harga !== undefined && produk.harga !== null ? String(produk.harga) : ""
+  );
+  const [hargaCoretInput, setHargaCoretInput] = useState(
+    produk.harga_coret !== undefined && produk.harga_coret !== null
+      ? String(produk.harga_coret)
+      : ""
+  );
+  const [capacityInput, setCapacityInput] = useState(String(produk.max_capacity_kg ?? 7));
+  const [durationInput, setDurationInput] = useState(
+    String(produk.cycle_duration_minutes ?? 40)
+  );
+  const [stokInput, setStokInput] = useState(String(produk.stok ?? 10));
+  const [urutanInput, setUrutanInput] = useState(String(produk.urutan ?? 0));
   const [deskripsiInput, setDeskripsiInput] = useState(produk.deskripsi || "");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
@@ -50,11 +74,21 @@ export default function FormProduk({
     };
   }, [objectUrl]);
 
-  const dbKategori = daftarKategori.map((k) => k.nama || k).filter(Boolean);
-  const sumberKategori = dbKategori.length > 0 ? dbKategori : KATEGORI_DEFAULT;
-  const pilihanKategori = Array.from(
-    new Set([...sumberKategori, produk.kategori || ""])
-  ).filter(Boolean);
+  useEffect(() => {
+    if (state?.values) {
+      setNamaInput(String(state.values.nama ?? ""));
+      setKategoriInput(String(state.values.kategori ?? ""));
+      setBadgeInput(String(state.values.badge ?? ""));
+      setHargaInput(String(state.values.harga ?? ""));
+      setHargaCoretInput(String(state.values.harga_coret ?? ""));
+      setCapacityInput(String(state.values.max_capacity_kg ?? ""));
+      setDurationInput(String(state.values.cycle_duration_minutes ?? ""));
+      setStokInput(String(state.values.stok ?? ""));
+      setUrutanInput(String(state.values.urutan ?? ""));
+      setFotoUrlInput(String(state.values.foto_url ?? ""));
+      setDeskripsiInput(String(state.values.deskripsi ?? ""));
+    }
+  }, [state]);
 
   function handleFileChange(event) {
     const file = event.target.files?.[0];
@@ -144,7 +178,8 @@ export default function FormProduk({
           <Input
             label="Nama paket layanan"
             name="nama"
-            defaultValue={produk.nama || ""}
+            value={namaInput}
+            onChange={(e) => setNamaInput(e.target.value)}
             placeholder="Contoh: Paket Cuci + Kering Express"
             required
           />
@@ -156,12 +191,24 @@ export default function FormProduk({
             <span className="text-[13px] font-semibold tracking-[-0.01em] text-teks">
               Kategori
             </span>
-            <CustomSelect
-              name="kategori"
-              options={pilihanKategori}
-              defaultValue={produk.kategori || pilihanKategori[0] || "Cuci + Kering"}
-              ariaLabel="Pilih kategori layanan"
-            />
+            {pilihanKategori.length > 0 ? (
+              <CustomSelect
+                name="kategori"
+                options={pilihanKategori}
+                value={kategoriInput}
+                onChange={setKategoriInput}
+                ariaLabel="Pilih kategori layanan"
+              />
+            ) : (
+              <div className="rounded-[12px] border border-harga/40 bg-harga-latar px-3.5 py-2.5 text-xs text-harga">
+                Belum ada kategori di database.{" "}
+                <Link href="/admin/kategori" className="font-semibold underline">
+                  Tambah kategori terlebih dahulu
+                </Link>
+                .
+                <input type="hidden" name="kategori" value="" />
+              </div>
+            )}
             <FieldError message={errors.kategori} />
           </div>
 
@@ -169,7 +216,8 @@ export default function FormProduk({
             <Input
               label="Badge penanda (opsional)"
               name="badge"
-              defaultValue={produk.badge || ""}
+              value={badgeInput}
+              onChange={(e) => setBadgeInput(e.target.value)}
               placeholder="Contoh: Terlaris, Promo Jam Sepi"
             />
             <FieldError message={errors.badge} />
@@ -182,9 +230,10 @@ export default function FormProduk({
               label="Harga aktif (Rp)"
               name="harga"
               type="number"
-              min="0"
+              min="1"
               step="1"
-              defaultValue={produk.harga ?? ""}
+              value={hargaInput}
+              onChange={(e) => setHargaInput(e.target.value)}
               required
             />
             <FieldError message={errors.harga} />
@@ -197,7 +246,8 @@ export default function FormProduk({
               type="number"
               min="0"
               step="1"
-              defaultValue={produk.harga_coret ?? ""}
+              value={hargaCoretInput}
+              onChange={(e) => setHargaCoretInput(e.target.value)}
               placeholder="Kosongkan jika tidak promo"
             />
             <FieldError message={errors.harga_coret} />
@@ -212,7 +262,8 @@ export default function FormProduk({
               type="number"
               min="1"
               step="1"
-              defaultValue={produk.max_capacity_kg ?? 7}
+              value={capacityInput}
+              onChange={(e) => setCapacityInput(e.target.value)}
               required
             />
             <FieldError message={errors.max_capacity_kg} />
@@ -225,7 +276,8 @@ export default function FormProduk({
               type="number"
               min="1"
               step="1"
-              defaultValue={produk.cycle_duration_minutes ?? 40}
+              value={durationInput}
+              onChange={(e) => setDurationInput(e.target.value)}
               required
             />
             <FieldError message={errors.cycle_duration_minutes} />
@@ -238,7 +290,8 @@ export default function FormProduk({
               type="number"
               min="0"
               step="1"
-              defaultValue={produk.stok ?? 10}
+              value={stokInput}
+              onChange={(e) => setStokInput(e.target.value)}
             />
             <FieldError message={errors.stok} />
           </div>
@@ -249,7 +302,8 @@ export default function FormProduk({
               name="urutan"
               type="number"
               step="1"
-              defaultValue={produk.urutan ?? 0}
+              value={urutanInput}
+              onChange={(e) => setUrutanInput(e.target.value)}
             />
             <FieldError message={errors.urutan} />
           </div>
