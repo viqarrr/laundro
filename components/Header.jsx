@@ -1,5 +1,6 @@
 import Link from "next/link";
 import CartHeaderButton from "@/components/CartHeaderButton";
+import LogoLaundro from "@/components/LogoLaundro";
 import ThemeToggle from "@/components/ThemeToggle";
 import { toko } from "@/lib/toko";
 
@@ -19,21 +20,9 @@ export default function Header({ pengaturan = null }) {
       <div className="mx-auto flex h-16 max-w-[1080px] items-center justify-between gap-4 px-4 sm:px-6">
         <Link
           href="/"
-          className="inline-flex min-h-[44px] items-center gap-2.5 text-[18px] font-semibold tracking-[-0.02em] text-teks whitespace-nowrap transition-colors hover:text-utama"
+          className="group inline-flex min-h-[44px] items-center whitespace-nowrap transition-opacity hover:opacity-90"
         >
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 20 20"
-            fill="none"
-            aria-hidden="true"
-            className="shrink-0 text-utama"
-          >
-            <circle cx="10" cy="10" r="8.25" stroke="currentColor" strokeWidth="1.6" />
-            <circle cx="10" cy="10" r="3.75" stroke="currentColor" strokeWidth="1.4" />
-            <circle cx="10" cy="10" r="1.2" fill="currentColor" />
-          </svg>
-          <span>{namaGerai}</span>
+          <LogoLaundro varian="full" nama={namaGerai} />
         </Link>
 
         <nav aria-label="Navigasi utama" className="hidden items-center gap-6 sm:flex">
@@ -49,16 +38,9 @@ export default function Header({ pengaturan = null }) {
         </nav>
 
         <div className="flex items-center gap-2">
-          {/* Slot kontrol tema, keranjang, dan akses cepat admin */}
+          {/* Slot kontrol tema dan keranjang */}
           <ThemeToggle />
           <CartHeaderButton />
-          <Link
-            href="/admin"
-            className="inline-flex min-h-[40px] items-center gap-2 rounded-full border border-garis bg-permukaan px-3.5 py-1.5 text-xs font-semibold text-teks whitespace-nowrap transition-colors hover:border-garis-tegas"
-          >
-            <span className="h-2 w-2 rounded-full bg-utama" aria-hidden="true" />
-            <span>Admin</span>
-          </Link>
         </div>
       </div>
 

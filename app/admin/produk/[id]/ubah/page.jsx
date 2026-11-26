@@ -1,13 +1,13 @@
 import { notFound } from "next/navigation";
 import NavAdmin from "@/components/NavAdmin";
 import FormProduk from "@/components/FormProduk";
-import { requireAdmin } from "@/lib/supabase/session";
+import { requireSuperAdmin } from "@/lib/supabase/session";
 import { ubahProdukAction } from "@/app/admin/produk-actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function HalamanUbahProduk({ params }) {
-  const { supabase } = await requireAdmin();
+  const { supabase } = await requireSuperAdmin();
   const { id } = await params;
 
   if (!/^\d+$/.test(String(id))) {

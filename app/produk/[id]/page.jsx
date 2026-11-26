@@ -138,7 +138,7 @@ export default async function HalamanDetailProduk({ params }) {
   }
 
   return (
-    <div className="py-10 sm:py-12">
+    <div id="detail-produk-fokus" tabIndex={-1} className="py-10 sm:py-12 focus:outline-none">
       <Link
         href="/"
         className="inline-flex min-h-[40px] items-center gap-1.5 text-[15px] font-medium text-utama hover:underline underline-offset-4"

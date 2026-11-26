@@ -1,7 +1,7 @@
 import Link from "next/link";
 import ModerasiUlasan from "@/components/ModerasiUlasan";
 import NavAdmin from "@/components/NavAdmin";
-import { requireAdmin } from "@/lib/supabase/session";
+import { requireSuperAdmin } from "@/lib/supabase/session";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,7 @@ const FILTER_STATUS = [
 ];
 
 export default async function HalamanUlasanAdmin({ searchParams }) {
-  const { supabase } = await requireAdmin();
+  const { supabase } = await requireSuperAdmin();
   const sp = await searchParams;
 
   const statusRaw = String(sp?.status || "semua").toLowerCase();

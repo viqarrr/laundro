@@ -28,6 +28,12 @@ export async function GET() {
   if (!profile.aktif) {
     return NextResponse.json({ error: "Akun admin nonaktif." }, { status: 403 });
   }
+  if (profile.role !== "SUPERADMIN") {
+    return NextResponse.json(
+      { error: "Akses ditolak: fitur ini khusus untuk Superadmin." },
+      { status: 403 }
+    );
+  }
 
   try {
     const { data: rows, error } = await session.supabase

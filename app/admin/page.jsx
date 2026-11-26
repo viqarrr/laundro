@@ -3,7 +3,7 @@ import TabelProduk from "@/components/TabelProduk";
 import Tombol from "@/components/Tombol";
 import ImporCsvModal from "@/components/ImporCsvModal";
 import FilterProdukAdmin from "./FilterProdukAdmin";
-import { requireAdmin } from "@/lib/supabase/session";
+import { requireSuperAdmin } from "@/lib/supabase/session";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,7 @@ function buatUrlAdmin({ q, status, page }) {
 }
 
 export default async function HalamanAdmin({ searchParams }) {
-  const { supabase, profile } = await requireAdmin();
+  const { supabase, profile } = await requireSuperAdmin();
   const sp = await searchParams;
 
   const q = String(sp?.q || "").trim();

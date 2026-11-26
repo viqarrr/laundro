@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title">
+  <title id="title">Laundro Logo Mark</title>
+  <path fill="#1d1d1f" d="M 24 44 A 20 20 0 0 1 64 44 L 64 168 A 24 24 0 0 0 88 192 L 212 192 A 20 20 0 0 1 212 232 L 88 232 A 64 64 0 0 1 24 168 Z"/>
+  <path fill="#0066cc" d="M 156 32 A 68 68 0 1 0 224 100 A 16 16 0 0 0 192 100 A 36 36 0 1 1 156 64 A 16 16 0 0 0 156 32 Z"/>
+  <circle cx="208" cy="48" r="16" fill="#0066cc"/>
+</svg>

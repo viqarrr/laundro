@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/supabase/session";
+import { requireSuperAdmin } from "@/lib/supabase/session";
 import { catatLogAdmin } from "@/lib/admin-log";
 import { validasiInputProduk } from "@/lib/validators/produk";
 
@@ -66,9 +66,9 @@ function toBooleanOnOff(raw, defaultBool = false) {
 export async function imporProdukCsvAction(_prevState, formData) {
   let session;
   try {
-    session = await requireAdmin({ mode: "throw" });
+    session = await requireSuperAdmin({ mode: "throw" });
   } catch {
-    return { ok: false, error: "Sesi admin tidak valid." };
+    return { ok: false, error: "Akses ditolak: fitur ini khusus untuk Superadmin." };
   }
 
   try {

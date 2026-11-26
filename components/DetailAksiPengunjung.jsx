@@ -12,6 +12,18 @@ export default function DetailAksiPengunjung({ produk }) {
     recordRecentView(produk);
   }, [produk, recordRecentView]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    const rafId = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      const target = document.getElementById("detail-produk-fokus");
+      if (target) {
+        target.focus({ preventScroll: true });
+      }
+    });
+    return () => window.cancelAnimationFrame(rafId);
+  }, [produk.id]);
+
   const favAktif = hydrated && isFavorite(produk.id);
   const compareAktif = hydrated && isCompared(produk.id);
 

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 256" width="960" height="256" role="img" aria-labelledby="title">
+  <title id="title">Laundro Logo</title>
+  <g id="symbol">
+    <path fill="#1d1d1f" d="M 24 44 A 20 20 0 0 1 64 44 L 64 168 A 24 24 0 0 0 88 192 L 212 192 A 20 20 0 0 1 212 232 L 88 232 A 64 64 0 0 1 24 168 Z"/>
+    <path fill="#0066cc" d="M 156 32 A 68 68 0 1 0 224 100 A 16 16 0 0 0 192 100 A 36 36 0 1 1 156 64 A 16 16 0 0 0 156 32 Z"/>
+    <circle cx="208" cy="48" r="16" fill="#0066cc"/>
+  </g>
+  <g id="wordmark" fill="#1d1d1f">
+    <path d="M 278 64 H 300 V 172 H 348 V 192 H 278 Z"/>
+    <path fill-rule="evenodd" d="M 426 100 H 446 V 192 H 426 V 185 A 48 48 0 1 1 426 107 Z M 398 118 A 28 28 0 1 0 398.1 118 Z"/>
+    <path d="M 466 100 H 486 V 154 A 19 19 0 0 0 524 154 V 100 H 544 V 154 A 39 39 0 0 1 466 154 Z"/>
+    <path d="M 564 192 V 100 H 584 V 104 A 39 39 0 0 1 642 138 V 192 H 622 V 138 A 19 19 0 0 0 584 138 V 192 Z"/>
+    <path fill-rule="evenodd" d="M 736 64 H 756 V 192 H 736 V 185 A 48 48 0 1 1 736 107 Z M 708 118 A 28 28 0 1 0 708.1 118 Z"/>
+    <path d="M 776 192 V 100 H 796 V 111 A 36 36 0 0 1 826 100 V 120 A 18 18 0 0 0 796 136 V 192 Z"/>
+    <path fill-rule="evenodd" d="M 888 98 A 48 48 0 1 1 887.9 98 Z M 888 118 A 28 28 0 1 0 888.1 118 Z"/>
+  </g>
+</svg>

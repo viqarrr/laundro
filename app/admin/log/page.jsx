@@ -1,7 +1,7 @@
 import Link from "next/link";
 import NavAdmin from "@/components/NavAdmin";
 import Tombol from "@/components/Tombol";
-import { requireAdmin } from "@/lib/supabase/session";
+import { requireSuperAdmin } from "@/lib/supabase/session";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +28,7 @@ function formatWaktu(iso) {
 }
 
 export default async function HalamanLogAdmin({ searchParams }) {
-  const { supabase } = await requireAdmin();
+  const { supabase } = await requireSuperAdmin();
   const sp = await searchParams;
 
   const aksiFilter = String(sp?.aksi || "").trim();

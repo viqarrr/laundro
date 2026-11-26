@@ -1,15 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/supabase/session";
+import { requireSuperAdmin } from "@/lib/supabase/session";
 import { catatLogAdmin } from "@/lib/admin-log";
 
 export async function ubahStatusUlasanAction(ulasanId, nextStatus) {
   let session;
   try {
-    session = await requireAdmin({ mode: "throw" });
+    session = await requireSuperAdmin({ mode: "throw" });
   } catch {
-    return { ok: false, error: "Sesi admin tidak valid." };
+    return { ok: false, error: "Akses ditolak: fitur ini khusus untuk Superadmin." };
   }
 
   if (!/^\d+$/.test(String(ulasanId)) || !["approved", "rejected"].includes(nextStatus)) {
@@ -52,9 +52,9 @@ export async function ubahStatusUlasanAction(ulasanId, nextStatus) {
 export async function hapusUlasanAction(ulasanId) {
   let session;
   try {
-    session = await requireAdmin({ mode: "throw" });
+    session = await requireSuperAdmin({ mode: "throw" });
   } catch {
-    return { ok: false, error: "Sesi admin tidak valid." };
+    return { ok: false, error: "Akses ditolak: fitur ini khusus untuk Superadmin." };
   }
 
   if (!/^\d+$/.test(String(ulasanId))) {

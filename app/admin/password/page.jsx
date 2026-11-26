@@ -1,11 +1,11 @@
 import NavAdmin from "@/components/NavAdmin";
 import FormGantiPassword from "./FormGantiPassword";
-import { requireAdmin } from "@/lib/supabase/session";
+import { requireSuperAdmin } from "@/lib/supabase/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function HalamanGantiPassword() {
-  await requireAdmin();
+  await requireSuperAdmin();
 
   return (
     <div className="flex flex-col gap-6 py-8">

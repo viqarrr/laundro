@@ -16,6 +16,12 @@ export async function POST(request) {
   if (!profile.aktif) {
     return NextResponse.json({ error: "Akun admin sedang dinonaktifkan." }, { status: 403 });
   }
+  if (profile.role !== "SUPERADMIN") {
+    return NextResponse.json(
+      { error: "Akses ditolak: fitur ini khusus untuk Superadmin." },
+      { status: 403 }
+    );
+  }
 
   try {
     const clientIp = await getClientIp();

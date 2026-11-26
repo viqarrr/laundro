@@ -3,7 +3,7 @@
 import crypto from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/supabase/session";
+import { requireSuperAdmin } from "@/lib/supabase/session";
 import { catatLogAdmin } from "@/lib/admin-log";
 import { validasiFileFotoProduk, validasiInputProduk } from "@/lib/validators/produk";
 
@@ -30,7 +30,7 @@ async function uploadFotoKeStorage(supabase, fileCheck) {
 }
 
 export async function tambahProdukAction(_prevState, formData) {
-  const { supabase, user } = await requireAdmin();
+  const { supabase, user } = await requireSuperAdmin();
 
   let berhasil = false;
 
@@ -99,7 +99,7 @@ export async function tambahProdukAction(_prevState, formData) {
 }
 
 export async function ubahProdukAction(_prevState, formData) {
-  const { supabase, user } = await requireAdmin();
+  const { supabase, user } = await requireSuperAdmin();
 
   const idRaw = String(formData.get("id") || "").trim();
   if (!/^\d+$/.test(idRaw)) {
@@ -174,7 +174,13 @@ export async function ubahProdukAction(_prevState, formData) {
 }
 
 export async function hapusProdukAction(id) {
-  const { supabase, user } = await requireAdmin();
+  let session;
+  try {
+    session = await requireSuperAdmin({ mode: "throw" });
+  } catch {
+    return { ok: false, error: "Akses ditolak: fitur ini khusus untuk Superadmin." };
+  }
+  const { supabase, user } = session;
 
   if (!/^\d+$/.test(String(id))) {
     return { ok: false, error: "ID paket layanan tidak valid." };
@@ -203,7 +209,13 @@ export async function hapusProdukAction(id) {
 }
 
 export async function toggleAktifProdukAction(id, aktifBerikutnya) {
-  const { supabase, user } = await requireAdmin();
+  let session;
+  try {
+    session = await requireSuperAdmin({ mode: "throw" });
+  } catch {
+    return { ok: false, error: "Akses ditolak: fitur ini khusus untuk Superadmin." };
+  }
+  const { supabase, user } = session;
 
   if (!/^\d+$/.test(String(id))) {
     return { ok: false, error: "ID paket layanan tidak valid." };
@@ -238,7 +250,13 @@ export async function toggleAktifProdukAction(id, aktifBerikutnya) {
 }
 
 export async function ubahUrutanProdukAction(id, arah) {
-  const { supabase } = await requireAdmin();
+  let session;
+  try {
+    session = await requireSuperAdmin({ mode: "throw" });
+  } catch {
+    return { ok: false, error: "Akses ditolak: fitur ini khusus untuk Superadmin." };
+  }
+  const { supabase } = session;
 
   if (!/^\d+$/.test(String(id)) || (arah !== "naik" && arah !== "turun")) {
     return { ok: false, error: "Permintaan perubahan urutan tidak valid." };
@@ -295,7 +313,13 @@ export async function ubahUrutanProdukAction(id, arah) {
 }
 
 export async function simpanUrutanProdukAction(orderedIds) {
-  const { supabase } = await requireAdmin();
+  let session;
+  try {
+    session = await requireSuperAdmin({ mode: "throw" });
+  } catch {
+    return { ok: false, error: "Akses ditolak: fitur ini khusus untuk Superadmin." };
+  }
+  const { supabase } = session;
 
   if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
     return { ok: false, error: "Daftar urutan layanan tidak valid." };

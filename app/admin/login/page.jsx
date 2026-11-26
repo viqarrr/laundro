@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import LogoLaundro from "@/components/LogoLaundro";
 import FormLogin from "./FormLogin";
 import { getAdminSession } from "@/lib/supabase/session";
 
@@ -14,6 +15,7 @@ export default async function HalamanLogin() {
     <div className="mx-auto flex max-w-sm flex-col gap-6 py-12">
       <div className="rounded-[20px] border border-garis bg-latar p-6 sm:p-8">
         <div className="mb-6">
+          <LogoLaundro varian="full" className="mb-5" />
           <p className="text-xs font-semibold uppercase tracking-[0.04em] text-utama">Portal Admin</p>
           <h1 className="mt-1 text-[26px] font-semibold leading-tight tracking-[-0.02em] text-teks">
             Masuk admin

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/supabase/session";
+import { requireSuperAdmin } from "@/lib/supabase/session";
 import { catatLogAdmin } from "@/lib/admin-log";
 
 function buatSlug(teks) {
@@ -68,7 +68,13 @@ function revalidateKategoriPaths() {
 }
 
 export async function tambahKategoriAction(_prevState, formData) {
-  const { supabase, user } = await requireAdmin();
+  let session;
+  try {
+    session = await requireSuperAdmin({ mode: "throw" });
+  } catch {
+    return { ok: false, error: "Akses ditolak: fitur ini khusus untuk Superadmin." };
+  }
+  const { supabase, user } = session;
 
   try {
     const { valid, data, errors } = validasiInputKategori(formData);
@@ -127,7 +133,13 @@ export async function tambahKategoriAction(_prevState, formData) {
 }
 
 export async function ubahKategoriAction(_prevState, formData) {
-  const { supabase, user } = await requireAdmin();
+  let session;
+  try {
+    session = await requireSuperAdmin({ mode: "throw" });
+  } catch {
+    return { ok: false, error: "Akses ditolak: fitur ini khusus untuk Superadmin." };
+  }
+  const { supabase, user } = session;
 
   const idRaw = String(formData.get("id") || "").trim();
   if (!/^\d+$/.test(idRaw)) {
@@ -189,7 +201,13 @@ export async function ubahKategoriAction(_prevState, formData) {
 }
 
 export async function hapusKategoriAction(id) {
-  const { supabase, user } = await requireAdmin();
+  let session;
+  try {
+    session = await requireSuperAdmin({ mode: "throw" });
+  } catch {
+    return { ok: false, error: "Akses ditolak: fitur ini khusus untuk Superadmin." };
+  }
+  const { supabase, user } = session;
 
   if (!/^\d+$/.test(String(id))) {
     return { ok: false, error: "ID kategori tidak valid." };

@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getAdminSession } from "@/lib/supabase/session";
+import { ensureAdminProfile, requireSuperAdmin } from "@/lib/supabase/session";
 import { checkRateLimit, getClientIp, resetRateLimit } from "@/lib/rate-limit";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -39,13 +39,13 @@ export async function loginAdmin(_prevState, formData) {
     return { error: "Masukkan email dan password yang valid." };
   }
 
-  let loginBerhasil = false;
+  let redirectTarget = null;
 
   try {
     const supabase = await createSupabaseServerClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
+    if (error || !authData?.user) {
       const attempt = checkRateLimit({
         key: rateKey,
         limit: LOGIN_MAX_ATTEMPTS,
@@ -62,25 +62,34 @@ export async function loginAdmin(_prevState, formData) {
       return { error: "Email atau password salah. Silakan periksa kembali." };
     }
 
+    const profile = await ensureAdminProfile({ supabase, user: authData.user });
+    if (!profile.aktif) {
+      await supabase.auth.signOut();
+      return { error: "Akun admin ini sedang dinonaktifkan." };
+    }
+
     resetRateLimit(rateKey);
-    loginBerhasil = true;
+    redirectTarget = profile.role === "SUPERADMIN" ? "/admin" : "/admin/jadwal";
   } catch {
     return { error: "Terjadi gangguan saat memproses login. Coba beberapa saat lagi." };
   }
 
-  if (loginBerhasil) {
-    redirect("/admin");
+  if (redirectTarget) {
+    redirect(redirectTarget);
   }
 
   return { error: "Login gagal diproses." };
 }
 
 export async function gantiPasswordAdmin(_prevState, formData) {
+  let session;
   try {
-    const session = await getAdminSession();
-    if (!session) {
-      return { error: "Sesi admin tidak valid. Silakan masuk kembali." };
-    }
+    session = await requireSuperAdmin({ mode: "throw" });
+  } catch {
+    return { error: "Akses ditolak: fitur ini khusus untuk Superadmin." };
+  }
+
+  try {
 
     const passwordBaru = String(formData.get("password_baru") || "");
     const konfirmasiPassword = String(formData.get("konfirmasi_password") || "");

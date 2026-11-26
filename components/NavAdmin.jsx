@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { logoutAdmin } from "@/app/admin/auth-actions";
+import { ensureAdminProfile, getAdminSession } from "@/lib/supabase/session";
 
-const adminLinks = [
+const superAdminLinks = [
   { href: "/admin", label: "Produk" },
   { href: "/admin/kategori", label: "Kategori" },
   { href: "/admin/jadwal", label: "Jadwal" },
@@ -12,7 +13,22 @@ const adminLinks = [
   { href: "/admin/password", label: "Ganti password" },
 ];
 
-export default function NavAdmin() {
+const staffLinks = [{ href: "/admin/jadwal", label: "Jadwal" }];
+
+export default async function NavAdmin({ role = null }) {
+  let effectiveRole = role;
+  if (!effectiveRole) {
+    const session = await getAdminSession();
+    if (session) {
+      const profile = await ensureAdminProfile(session);
+      effectiveRole = profile?.role || "STAFF";
+    } else {
+      effectiveRole = "STAFF";
+    }
+  }
+
+  const adminLinks = effectiveRole === "SUPERADMIN" ? superAdminLinks : staffLinks;
+
   return (
     <nav
       aria-label="Navigasi admin"

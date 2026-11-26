@@ -1,12 +1,12 @@
 import NavAdmin from "@/components/NavAdmin";
 import FormProduk from "@/components/FormProduk";
-import { requireAdmin } from "@/lib/supabase/session";
+import { requireSuperAdmin } from "@/lib/supabase/session";
 import { tambahProdukAction } from "@/app/admin/produk-actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function HalamanTambahProduk() {
-  const { supabase } = await requireAdmin();
+  const { supabase } = await requireSuperAdmin();
 
   const { data: kategoriList } = await supabase
     .from("kategori")

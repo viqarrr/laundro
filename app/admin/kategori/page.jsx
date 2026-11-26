@@ -1,11 +1,11 @@
 import NavAdmin from "@/components/NavAdmin";
 import KelolaKategori from "@/components/KelolaKategori";
-import { requireAdmin } from "@/lib/supabase/session";
+import { requireSuperAdmin } from "@/lib/supabase/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function HalamanKategoriAdmin() {
-  const { supabase } = await requireAdmin();
+  const { supabase } = await requireSuperAdmin();
 
   const { data: daftarKategori, error } = await supabase
     .from("kategori")
