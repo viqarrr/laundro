@@ -1,20 +1,35 @@
 import NavAdmin from "@/components/NavAdmin";
 import FormProduk from "@/components/FormProduk";
-import CatatanBelumAktif from "@/components/CatatanBelumAktif";
 import { requireAdmin } from "@/lib/supabase/session";
+import { tambahProdukAction } from "@/app/admin/produk-actions";
 
 export const dynamic = "force-dynamic";
 
-// US-08 (bonus): tambah produk.
 export default async function HalamanTambahProduk() {
-  await requireAdmin();
+  const { supabase } = await requireAdmin();
+
+  const { data: kategoriList } = await supabase
+    .from("kategori")
+    .select("nama")
+    .order("urutan", { ascending: true })
+    .order("nama", { ascending: true });
 
   return (
     <div className="flex flex-col gap-6 py-8">
       <NavAdmin />
-      <h1 className="text-2xl font-semibold tracking-[-0.02em] text-teks">Tambah produk</h1>
-      <CatatanBelumAktif>Simpan produk belum berfungsi: lihat US-08.</CatatanBelumAktif>
-      <FormProduk labelTombol="Simpan produk" />
+      <div>
+        <h1 className="text-2xl font-semibold tracking-[-0.02em] text-teks">
+          Tambah Paket Layanan
+        </h1>
+        <p className="mt-1 text-sm text-teks-lembut">
+          Tambahkan paket cuci, pengeringan, atau add-on baru ke katalog gerai.
+        </p>
+      </div>
+      <FormProduk
+        action={tambahProdukAction}
+        labelTombol="Simpan produk"
+        daftarKategori={kategoriList || []}
+      />
     </div>
   );
 }

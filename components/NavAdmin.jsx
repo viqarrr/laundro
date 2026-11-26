@@ -14,6 +14,12 @@ export default function NavAdmin() {
         Produk
       </Link>
       <Link
+        href="/admin/kategori"
+        className="inline-flex min-h-[40px] items-center rounded-full px-3.5 py-1.5 font-semibold text-teks transition-colors hover:bg-permukaan hover:text-utama"
+      >
+        Kategori
+      </Link>
+      <Link
         href="/admin/password"
         className="inline-flex min-h-[40px] items-center rounded-full px-3.5 py-1.5 font-semibold text-teks transition-colors hover:bg-permukaan hover:text-utama"
       >
