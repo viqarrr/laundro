@@ -25,8 +25,8 @@ export async function GET() {
   }
 
   const profile = await ensureAdminProfile(session);
-  if (!profile.aktif) {
-    return NextResponse.json({ error: "Akun admin nonaktif." }, { status: 403 });
+  if (!profile || !profile.aktif) {
+    return NextResponse.json({ error: "Akun admin nonaktif atau tidak terverifikasi." }, { status: 403 });
   }
   if (profile.role !== "SUPERADMIN") {
     return NextResponse.json(

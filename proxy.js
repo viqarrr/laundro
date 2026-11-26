@@ -39,14 +39,33 @@ export async function proxy(request) {
     error,
   } = await supabase.auth.getUser();
 
-  const isAuthenticated = !error && Boolean(user);
+  let isVerifiedAdmin = false;
+  if (!error && user) {
+    const email = String(user.email || "").trim().toLowerCase();
+    const { data: byUser } = await supabase
+      .from("admin_profiles")
+      .select("aktif")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-  if (!isAuthenticated && !isLoginPage) {
+    if (byUser) {
+      isVerifiedAdmin = Boolean(byUser.aktif);
+    } else if (email) {
+      const { data: byEmail } = await supabase
+        .from("admin_profiles")
+        .select("aktif")
+        .eq("email", email)
+        .maybeSingle();
+      isVerifiedAdmin = Boolean(byEmail?.aktif);
+    }
+  }
+
+  if (!isVerifiedAdmin && !isLoginPage) {
     const loginUrl = new URL("/admin/login", request.url);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAuthenticated && isLoginPage) {
+  if (isVerifiedAdmin && isLoginPage) {
     const adminUrl = new URL("/admin", request.url);
     return NextResponse.redirect(adminUrl);
   }

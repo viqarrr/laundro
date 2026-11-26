@@ -63,9 +63,9 @@ export async function loginAdmin(_prevState, formData) {
     }
 
     const profile = await ensureAdminProfile({ supabase, user: authData.user });
-    if (!profile.aktif) {
+    if (!profile || !profile.aktif) {
       await supabase.auth.signOut();
-      return { error: "Akun admin ini sedang dinonaktifkan." };
+      return { error: "Akun ini tidak terdaftar sebagai admin aktif." };
     }
 
     resetRateLimit(rateKey);

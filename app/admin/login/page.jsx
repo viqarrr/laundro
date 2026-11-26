@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation";
 import LogoLaundro from "@/components/LogoLaundro";
 import FormLogin from "./FormLogin";
-import { getAdminSession } from "@/lib/supabase/session";
+import { ensureAdminProfile, getAdminSession } from "@/lib/supabase/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function HalamanLogin() {
   const session = await getAdminSession();
-  if (session) {
+  const profile = session ? await ensureAdminProfile(session) : null;
+  if (profile && profile.aktif) {
     redirect("/admin");
   }
 
