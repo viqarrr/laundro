@@ -18,7 +18,7 @@ export default async function HalamanUbahProduk({ params }) {
     supabase
       .from("produk")
       .select(
-        "id, nama, harga, harga_coret, badge, deskripsi, foto_url, kategori, max_capacity_kg, cycle_duration_minutes, requires_washer, requires_dryer, stok, aktif, urutan"
+        "id, nama, harga, harga_coret, badge, deskripsi, foto_url, galeri_foto, varian, kategori, max_capacity_kg, cycle_duration_minutes, requires_washer, requires_dryer, stok, aktif, urutan"
       )
       .eq("id", Number(id))
       .maybeSingle(),

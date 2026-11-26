@@ -1,5 +1,5 @@
 import Link from "next/link";
-import KartuProduk from "@/components/KartuProduk";
+import KatalogInteraktif from "@/components/KatalogInteraktif";
 import Tombol from "@/components/Tombol";
 import { createSupabasePublicClient } from "@/lib/supabase/server";
 import { toko } from "@/lib/toko";
@@ -27,30 +27,63 @@ const langkahKerja = [
   },
 ];
 
-async function ambilDaftarLayanan() {
+async function ambilDataKatalog() {
   try {
     const supabase = createSupabasePublicClient();
-    const { data, error } = await supabase
-      .from("produk")
-      .select(
-        "id, nama, harga, harga_coret, badge, deskripsi, foto_url, kategori, max_capacity_kg, cycle_duration_minutes, requires_washer, requires_dryer, stok, aktif, urutan, created_at"
-      )
-      .eq("aktif", true)
-      .order("urutan", { ascending: true })
-      .order("created_at", { ascending: false });
 
-    if (error) {
-      return { daftarProduk: [], errorMuat: true };
+    const [produkRes, kategoriRes, mesinRes] = await Promise.all([
+      supabase
+        .from("produk")
+        .select(
+          "id, nama, harga, harga_coret, badge, deskripsi, foto_url, kategori, max_capacity_kg, cycle_duration_minutes, requires_washer, requires_dryer, stok, aktif, urutan, created_at"
+        )
+        .eq("aktif", true)
+        .order("urutan", { ascending: true })
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("kategori")
+        .select("id, nama, slug, deskripsi, urutan")
+        .order("urutan", { ascending: true })
+        .order("nama", { ascending: true }),
+      supabase.from("machines").select("id, type, status"),
+    ]);
+
+    if (produkRes.error) {
+      return { daftarProduk: [], daftarKategori: [], errorMuat: true };
     }
 
-    return { daftarProduk: data || [], errorMuat: false };
+    const machines = mesinRes.data || [];
+    const adaDataMesin = !mesinRes.error && machines.length > 0;
+    const washerAktif = machines.filter((m) => m.type === "WASHER" && m.status === "ACTIVE").length;
+    const dryerAktif = machines.filter((m) => m.type === "DRYER" && m.status === "ACTIVE").length;
+
+    const daftarProduk = (produkRes.data || []).map((item) => {
+      if (!adaDataMesin) return item;
+      const butuhWasherKosong = item.requires_washer && washerAktif === 0;
+      const butuhDryerKosong = item.requires_dryer && dryerAktif === 0;
+      if (butuhWasherKosong || butuhDryerKosong) {
+        return { ...item, stok: 0 };
+      }
+      return item;
+    });
+
+    return {
+      daftarProduk,
+      daftarKategori: kategoriRes.error ? [] : kategoriRes.data || [],
+      errorMuat: false,
+    };
   } catch {
-    return { daftarProduk: [], errorMuat: true };
+    return { daftarProduk: [], daftarKategori: [], errorMuat: true };
   }
 }
 
-export default async function HalamanKatalog() {
-  const { daftarProduk, errorMuat } = await ambilDaftarLayanan();
+export default async function HalamanKatalog({ searchParams }) {
+  const sp = await searchParams;
+  const initialQuery = String(sp?.q || "").trim();
+  const initialKategori = String(sp?.kategori || "").trim();
+  const initialSort = String(sp?.sort || "bawaan").trim();
+
+  const { daftarProduk, daftarKategori, errorMuat } = await ambilDataKatalog();
 
   return (
     <>
@@ -121,18 +154,16 @@ export default async function HalamanKatalog() {
 
       {/* Band 3: Katalog Paket & Tarif (.catalog-grid 2 kolom horizontal) */}
       <section id="katalog-layanan" aria-labelledby="judul-produk" className="band-full py-14">
-        <div className="mb-8 flex flex-col gap-4">
-          <div className="max-w-[560px]">
-            <h2
-              id="judul-produk"
-              className="text-[28px] font-semibold leading-[34px] tracking-[-0.015em] text-teks"
-            >
-              Katalog Paket &amp; Tarif
-            </h2>
-            <p className="mt-1.5 text-[17px] leading-[22px] tracking-[-0.02em] text-teks-lembut">
-              Pilih paket layanan cuci, pengering, atau add-on sesuai kebutuhan cucian Anda.
-            </p>
-          </div>
+        <div className="mb-8 max-w-[560px]">
+          <h2
+            id="judul-produk"
+            className="text-[28px] font-semibold leading-[34px] tracking-[-0.015em] text-teks"
+          >
+            Katalog Paket &amp; Tarif
+          </h2>
+          <p className="mt-1.5 text-[17px] leading-[22px] tracking-[-0.02em] text-teks-lembut">
+            Pilih paket layanan cuci, pengering, atau add-on sesuai kebutuhan cucian Anda.
+          </p>
         </div>
 
         {errorMuat ? (
@@ -154,11 +185,13 @@ export default async function HalamanKatalog() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {daftarProduk.map((produk) => (
-              <KartuProduk key={produk.id} produk={produk} />
-            ))}
-          </div>
+          <KatalogInteraktif
+            daftarProduk={daftarProduk}
+            daftarKategori={daftarKategori}
+            initialQuery={initialQuery}
+            initialKategori={initialKategori}
+            initialSort={initialSort}
+          />
         )}
       </section>
 

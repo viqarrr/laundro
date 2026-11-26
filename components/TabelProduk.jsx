@@ -1,21 +1,29 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatRupiah } from "@/lib/format";
 import Tombol from "@/components/Tombol";
 import {
   hapusProdukAction,
+  simpanUrutanProdukAction,
   toggleAktifProdukAction,
-  ubahUrutanProdukAction,
 } from "@/app/admin/produk-actions";
 
 export default function TabelProduk({ daftarProduk }) {
   const router = useRouter();
+  const [items, setItems] = useState(daftarProduk || []);
   const [isPending, startTransition] = useTransition();
   const [activeId, setActiveId] = useState(null);
+  const [draggedId, setDraggedId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [pesanError, setPesanError] = useState("");
   const [konfirmasiHapus, setKonfirmasiHapus] = useState(null);
+
+  useEffect(() => {
+    setItems(daftarProduk || []);
+  }, [daftarProduk]);
 
   function jalankanAksi(id, aksiFn) {
     setPesanError("");
@@ -31,6 +39,81 @@ export default function TabelProduk({ daftarProduk }) {
     });
   }
 
+  function simpanUrutanBaru(nextItems) {
+    const previousItems = items;
+    setItems(nextItems);
+    setPesanError("");
+    setIsSavingOrder(true);
+
+    startTransition(async () => {
+      const res = await simpanUrutanProdukAction(nextItems.map((item) => item.id));
+      setIsSavingOrder(false);
+      if (res && res.ok === false) {
+        setItems(previousItems);
+        setPesanError(res.error || "Gagal menyimpan urutan baru.");
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  function handleDragStart(event, id) {
+    if (isPending) {
+      event.preventDefault();
+      return;
+    }
+    setDraggedId(id);
+    setDragOverId(id);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(id));
+  }
+
+  function handleDragOver(event, targetId) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    if (dragOverId !== targetId) {
+      setDragOverId(targetId);
+    }
+  }
+
+  function handleDrop(event, targetId) {
+    event.preventDefault();
+    const sourceId = draggedId ?? Number(event.dataTransfer.getData("text/plain"));
+    setDraggedId(null);
+    setDragOverId(null);
+
+    if (!sourceId || sourceId === targetId) return;
+
+    const fromIdx = items.findIndex((item) => item.id === sourceId);
+    const toIdx = items.findIndex((item) => item.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    const nextItems = [...items];
+    const [moved] = nextItems.splice(fromIdx, 1);
+    nextItems.splice(toIdx, 0, moved);
+
+    simpanUrutanBaru(nextItems);
+  }
+
+  function handleDragEnd() {
+    setDraggedId(null);
+    setDragOverId(null);
+  }
+
+  function handleHandleKeyDown(event, index) {
+    if (isPending) return;
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+
+    event.preventDefault();
+    const targetIndex = event.key === "ArrowUp" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+
+    const nextItems = [...items];
+    const [moved] = nextItems.splice(index, 1);
+    nextItems.splice(targetIndex, 0, moved);
+    simpanUrutanBaru(nextItems);
+  }
+
   function konfirmasiDanHapus() {
     if (!konfirmasiHapus) return;
     const target = konfirmasiHapus;
@@ -38,7 +121,7 @@ export default function TabelProduk({ daftarProduk }) {
     jalankanAksi(target.id, () => hapusProdukAction(target.id));
   }
 
-  if (!daftarProduk || daftarProduk.length === 0) {
+  if (!items || items.length === 0) {
     return (
       <div className="rounded-[20px] border border-garis bg-permukaan p-8 text-center">
         <p className="text-[17px] font-semibold text-teks">Tidak ada paket layanan ditemukan</p>
@@ -51,6 +134,13 @@ export default function TabelProduk({ daftarProduk }) {
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-teks-lembut">
+        <span>Seret baris melalui ikon pegangan di kiri untuk mengatur urutan tampil.</span>
+        {isSavingOrder ? (
+          <span className="font-semibold text-utama">Menyimpan urutan...</span>
+        ) : null}
+      </div>
+
       {pesanError ? (
         <p
           role="alert"
@@ -61,30 +151,68 @@ export default function TabelProduk({ daftarProduk }) {
       ) : null}
 
       <div className="overflow-x-auto rounded-[20px] border border-garis bg-latar">
-        <table className="w-full min-w-[760px] text-left text-sm">
+        <table className="w-full min-w-[740px] text-left text-sm">
           <thead className="bg-permukaan text-xs font-semibold uppercase tracking-[0.03em] text-teks-lembut">
             <tr>
+              <th className="w-12 px-3 py-3.5 text-center">
+                <span className="sr-only">Geser urutan</span>
+              </th>
               <th className="px-4 py-3.5">Layanan</th>
               <th className="px-4 py-3.5">Kategori</th>
               <th className="px-4 py-3.5">Kapasitas &amp; Durasi</th>
               <th className="px-4 py-3.5">Tarif</th>
-              <th className="px-4 py-3.5">Urutan</th>
               <th className="px-4 py-3.5">Status</th>
               <th className="px-4 py-3.5 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody>
-            {daftarProduk.map((produk, index) => {
+            {items.map((produk, index) => {
               const sibuk = isPending && activeId === produk.id;
               const adaPromo = Number(produk.harga_coret) > Number(produk.harga);
+              const isDragged = draggedId === produk.id;
+              const isDropTarget = dragOverId === produk.id && draggedId !== produk.id;
 
               return (
-                <tr key={produk.id} className="border-t border-garis transition-colors hover:bg-permukaan/50">
+                <tr
+                  key={produk.id}
+                  draggable={!isPending}
+                  onDragStart={(e) => handleDragStart(e, produk.id)}
+                  onDragOver={(e) => handleDragOver(e, produk.id)}
+                  onDrop={(e) => handleDrop(e, produk.id)}
+                  onDragEnd={handleDragEnd}
+                  className={`border-t border-garis transition-colors ${
+                    isDragged
+                      ? "bg-utama-lembut/40 opacity-50"
+                      : isDropTarget
+                        ? "bg-utama-lembut/25 ring-2 ring-inset ring-utama"
+                        : "hover:bg-permukaan/50"
+                  }`}
+                >
+                  <td className="px-3 py-3.5 text-center">
+                    <button
+                      type="button"
+                      onKeyDown={(e) => handleHandleKeyDown(e, index)}
+                      aria-label={`Geser urutan ${produk.nama} (gunakan drag atau panah atas/bawah)`}
+                      title="Seret untuk mengubah urutan"
+                      className="inline-flex h-9 w-9 cursor-grab items-center justify-center rounded-[10px] text-teks-lembut transition-colors hover:bg-permukaan hover:text-teks active:cursor-grabbing"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <circle cx="5.5" cy="3.5" r="1.2" fill="currentColor" />
+                        <circle cx="10.5" cy="3.5" r="1.2" fill="currentColor" />
+                        <circle cx="5.5" cy="8" r="1.2" fill="currentColor" />
+                        <circle cx="10.5" cy="8" r="1.2" fill="currentColor" />
+                        <circle cx="5.5" cy="12.5" r="1.2" fill="currentColor" />
+                        <circle cx="10.5" cy="12.5" r="1.2" fill="currentColor" />
+                      </svg>
+                    </button>
+                  </td>
+
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
                       <img
                         src={produk.foto_url || "/images/hero-machines.jpg"}
                         alt={produk.nama}
+                        draggable={false}
                         className="h-11 w-11 shrink-0 rounded-[8px] border border-garis bg-permukaan object-cover"
                       />
                       <div className="min-w-0">
@@ -111,33 +239,6 @@ export default function TabelProduk({ daftarProduk }) {
                         {formatRupiah(produk.harga_coret)}
                       </span>
                     ) : null}
-                  </td>
-
-                  <td className="px-4 py-3.5">
-                    <div className="inline-flex items-center gap-1">
-                      <button
-                        type="button"
-                        disabled={sibuk || index === 0}
-                        onClick={() =>
-                          jalankanAksi(produk.id, () => ubahUrutanProdukAction(produk.id, "naik"))
-                        }
-                        aria-label={`Naikkan urutan ${produk.nama}`}
-                        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-[8px] border border-garis bg-latar text-xs font-semibold text-teks transition-colors hover:border-utama hover:text-utama disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        disabled={sibuk || index === daftarProduk.length - 1}
-                        onClick={() =>
-                          jalankanAksi(produk.id, () => ubahUrutanProdukAction(produk.id, "turun"))
-                        }
-                        aria-label={`Turunkan urutan ${produk.nama}`}
-                        className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-[8px] border border-garis bg-latar text-xs font-semibold text-teks transition-colors hover:border-utama hover:text-utama disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        ↓
-                      </button>
-                    </div>
                   </td>
 
                   <td className="px-4 py-3.5">

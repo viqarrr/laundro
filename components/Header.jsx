@@ -1,4 +1,5 @@
 import Link from "next/link";
+import CartHeaderButton from "@/components/CartHeaderButton";
 import { toko } from "@/lib/toko";
 
 const navItems = [
@@ -47,7 +48,7 @@ export default function Header() {
 
         <div className="flex items-center gap-2">
           {/* Slot kontrol tema, keranjang, dan akses cepat admin */}
-          <div id="header-utility-slot" className="flex items-center gap-2" />
+          <CartHeaderButton />
           <Link
             href="/admin"
             className="inline-flex min-h-[40px] items-center gap-2 rounded-full border border-garis bg-permukaan px-3.5 py-1.5 text-xs font-semibold text-teks whitespace-nowrap transition-colors hover:border-garis-tegas"

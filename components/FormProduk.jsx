@@ -24,6 +24,19 @@ export default function FormProduk({
   const [fotoUrlInput, setFotoUrlInput] = useState(produk.foto_url || "");
   const [selectedFileName, setSelectedFileName] = useState("");
   const [objectUrl, setObjectUrl] = useState(null);
+  const [galeriList, setGaleriList] = useState(() =>
+    Array.isArray(produk.galeri_foto) ? produk.galeri_foto.map(String) : []
+  );
+  const [varianList, setVarianList] = useState(() =>
+    Array.isArray(produk.varian)
+      ? produk.varian.map((v) => ({
+          nama_ukuran: String(v?.nama_ukuran || ""),
+          kapasitas_kg: String(v?.kapasitas_kg ?? ""),
+          harga: String(v?.harga ?? ""),
+          durasi_menit: String(v?.durasi_menit ?? ""),
+        }))
+      : []
+  );
 
   useEffect(() => {
     return () => {
@@ -293,6 +306,161 @@ export default function FormProduk({
             required
           />
           <FieldError message={errors.deskripsi} />
+        </div>
+
+        {/* Galeri Foto Tambahan (US-18) */}
+        <div className="flex flex-col gap-3 rounded-[16px] border border-garis bg-permukaan p-4">
+          <input type="hidden" name="galeri_foto_json" value={JSON.stringify(galeriList)} />
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[13px] font-semibold text-teks">Galeri Foto Tambahan (opsional)</p>
+              <p className="text-xs text-teks-lembut">
+                Tambahkan URL atau path foto tambahan untuk ditampilkan sebagai thumbnail di detail layanan.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setGaleriList((prev) => [...prev, ""])}
+              className="inline-flex min-h-[34px] shrink-0 cursor-pointer items-center rounded-full border border-garis-tegas bg-latar px-3 py-1 text-xs font-semibold text-utama hover:border-utama"
+            >
+              + Tambah Foto
+            </button>
+          </div>
+
+          {galeriList.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {galeriList.map((url, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={url}
+                    onChange={(e) =>
+                      setGaleriList((prev) =>
+                        prev.map((item, i) => (i === idx ? e.target.value : item))
+                      )
+                    }
+                    placeholder="/images/dark-drum.jpg atau https://..."
+                    className="min-h-[40px] flex-1 rounded-[8px] border border-garis-tegas bg-latar px-3 py-1.5 text-sm text-teks placeholder:text-teks-lembut focus:border-utama focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setGaleriList((prev) => prev.filter((_, i) => i !== idx))
+                    }
+                    className="inline-flex min-h-[40px] cursor-pointer items-center rounded-[8px] border border-garis bg-latar px-3 text-xs font-semibold text-bahaya hover:border-bahaya"
+                  >
+                    Hapus
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <FieldError message={errors.galeri_foto} />
+        </div>
+
+        {/* Varian Ukuran Tabung (US-48) */}
+        <div className="flex flex-col gap-3 rounded-[16px] border border-garis bg-permukaan p-4">
+          <input type="hidden" name="varian_json" value={JSON.stringify(varianList)} />
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[13px] font-semibold text-teks">Varian Ukuran Tabung (opsional)</p>
+              <p className="text-xs text-teks-lembut">
+                Sediakan pilihan ukuran seperti Standar 7 kg atau Jumbo 10 kg dengan tarif khusus.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                setVarianList((prev) => [
+                  ...prev,
+                  { nama_ukuran: "", kapasitas_kg: "7", harga: "", durasi_menit: "40" },
+                ])
+              }
+              className="inline-flex min-h-[34px] shrink-0 cursor-pointer items-center rounded-full border border-garis-tegas bg-latar px-3 py-1 text-xs font-semibold text-utama hover:border-utama"
+            >
+              + Tambah Varian
+            </button>
+          </div>
+
+          {varianList.length > 0 ? (
+            <div className="flex flex-col gap-2.5">
+              {varianList.map((row, idx) => (
+                <div
+                  key={idx}
+                  className="grid gap-2 rounded-[12px] border border-garis bg-latar p-3 sm:grid-cols-[1.5fr_0.8fr_1fr_0.8fr_auto] sm:items-center"
+                >
+                  <input
+                    type="text"
+                    value={row.nama_ukuran}
+                    onChange={(e) =>
+                      setVarianList((prev) =>
+                        prev.map((item, i) =>
+                          i === idx ? { ...item, nama_ukuran: e.target.value } : item
+                        )
+                      )
+                    }
+                    placeholder="Nama (mis. Standar 7 kg)"
+                    className="min-h-[38px] rounded-[8px] border border-garis-tegas bg-latar px-2.5 py-1.5 text-xs text-teks focus:border-utama focus:outline-none"
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    value={row.kapasitas_kg}
+                    onChange={(e) =>
+                      setVarianList((prev) =>
+                        prev.map((item, i) =>
+                          i === idx ? { ...item, kapasitas_kg: e.target.value } : item
+                        )
+                      )
+                    }
+                    placeholder="Kg"
+                    aria-label="Kapasitas varian (kg)"
+                    className="numeric min-h-[38px] rounded-[8px] border border-garis-tegas bg-latar px-2.5 py-1.5 text-xs text-teks focus:border-utama focus:outline-none"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    value={row.harga}
+                    onChange={(e) =>
+                      setVarianList((prev) =>
+                        prev.map((item, i) =>
+                          i === idx ? { ...item, harga: e.target.value } : item
+                        )
+                      )
+                    }
+                    placeholder="Harga (Rp)"
+                    aria-label="Harga varian (Rp)"
+                    className="numeric min-h-[38px] rounded-[8px] border border-garis-tegas bg-latar px-2.5 py-1.5 text-xs text-teks focus:border-utama focus:outline-none"
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    value={row.durasi_menit}
+                    onChange={(e) =>
+                      setVarianList((prev) =>
+                        prev.map((item, i) =>
+                          i === idx ? { ...item, durasi_menit: e.target.value } : item
+                        )
+                      )
+                    }
+                    placeholder="Mnt"
+                    aria-label="Durasi varian (menit)"
+                    className="numeric min-h-[38px] rounded-[8px] border border-garis-tegas bg-latar px-2.5 py-1.5 text-xs text-teks focus:border-utama focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setVarianList((prev) => prev.filter((_, i) => i !== idx))
+                    }
+                    className="inline-flex min-h-[38px] cursor-pointer items-center justify-center rounded-[8px] border border-garis bg-latar px-3 text-xs font-semibold text-bahaya hover:border-bahaya"
+                  >
+                    Hapus
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <FieldError message={errors.varian} />
         </div>
       </div>
 

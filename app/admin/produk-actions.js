@@ -253,3 +253,66 @@ export async function ubahUrutanProdukAction(id, arah) {
     return { ok: false, error: "Terjadi kesalahan saat mengubah urutan." };
   }
 }
+
+export async function simpanUrutanProdukAction(orderedIds) {
+  const { supabase } = await requireAdmin();
+
+  if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+    return { ok: false, error: "Daftar urutan layanan tidak valid." };
+  }
+
+  const parsedIds = orderedIds.map((val) => Number(val));
+  if (parsedIds.some((id) => !Number.isInteger(id) || id <= 0)) {
+    return { ok: false, error: "ID paket layanan tidak valid." };
+  }
+
+  try {
+    const { data: rows, error } = await supabase
+      .from("produk")
+      .select("id, urutan, created_at")
+      .order("urutan", { ascending: true })
+      .order("created_at", { ascending: false });
+
+    if (error || !rows || rows.length === 0) {
+      return { ok: false, error: "Data urutan belum dapat diperbarui." };
+    }
+
+    const subsetSet = new Set(parsedIds);
+    const validSubsetOrder = parsedIds.filter((id) => rows.some((row) => row.id === id));
+    if (validSubsetOrder.length === 0) {
+      return { ok: false, error: "Paket layanan tidak ditemukan." };
+    }
+
+    let subsetCursor = 0;
+    const reorderedIds = rows.map((row) => {
+      if (subsetSet.has(row.id) && subsetCursor < validSubsetOrder.length) {
+        const nextId = validSubsetOrder[subsetCursor];
+        subsetCursor += 1;
+        return nextId;
+      }
+      return row.id;
+    });
+
+    const updates = reorderedIds
+      .map((id, position) => {
+        const nextOrder = position + 1;
+        const currentRow = rows.find((r) => r.id === id);
+        if (currentRow && currentRow.urutan === nextOrder) return null;
+        return supabase.from("produk").update({ urutan: nextOrder }).eq("id", id);
+      })
+      .filter(Boolean);
+
+    if (updates.length > 0) {
+      const results = await Promise.all(updates);
+      if (results.some((res) => res.error)) {
+        return { ok: false, error: "Gagal menyimpan urutan layanan." };
+      }
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Terjadi kesalahan saat menyimpan urutan." };
+  }
+}
