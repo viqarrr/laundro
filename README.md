@@ -74,7 +74,13 @@ Urutan yang disarankan: US-01, US-02, US-03, US-04, US-05, US-06, lalu fitur bon
 
 ## Tentang aplikasi ini
 
-- **Nama usaha:**
-- **Pembuat:**
-- **Link aplikasi:**
+- **Nama usaha:** Laundro (Coin Laundry & Reservasi Antrean Mesin Digital)
+- **Pembuat:** Viqar Mulya
+- **Link aplikasi:** *(isi dengan URL deploy Vercel aktif, mis. `https://laundro-app.vercel.app`)*
 - **Fitur bonus yang dikerjakan:**
+  - **Manajemen Katalog & Admin (`US-07` s/d `US-10`, `US-29` s/d `US-35`, `US-46`, `US-47`):** CRUD paket layanan & kategori dinamis (`/admin/kategori`), upload foto ke Supabase Storage (validasi MIME + magic bytes maks 2 MB), status aktif/nonaktif, pengurutan drag-and-drop (`urutan`), pencarian & paginasi server-side, dashboard ringkasan + layanan terpopuler (`US-41`), serta ekspor & impor CSV dengan proteksi CSV injection.
+  - **Pengalaman Pengunjung & Katalog Interaktif (`US-11`, `US-12`, `US-15` s/d `US-24`, `US-36`, `US-37`, `US-48`, `US-49`):** Pencarian, filter chip kategori, pengurutan, paginasi "Muat Lebih Banyak", halaman dinamis `/kategori/[slug]`, galeri multi-foto, varian ukuran tabung, kalkulator estimasi berat kg ke jumlah tabung & DP, status stok mesin, harga coret & badge promo, keranjang multi-layanan via WhatsApp, halaman `/tentang`, tombol bagikan tautan, favorit & riwayat terakhir dilihat (`localStorage`), serta halaman perbandingan `/bandingkan`.
+  - **Ulasan, Analitik, Pengaturan, Peran, & Audit (`US-38` s/d `US-45`):** Ulasan & rating bintang (status awal `pending` + rate limit) dengan halaman moderasi `/admin/ulasan`, pelacakan klik WhatsApp (`/api/analytics/wa-click`), pengaturan gerai & banner promo dinamis (`/admin/pengaturan`), manajemen peran `SUPERADMIN` vs `STAFF` penjaga outlet (`/admin/akun`, di mana `STAFF` dibatasi khusus pada pengelolaan pesanan, quick walk-in, dan jadwal di `/admin/jadwal`), serta log aktivitas admin (`/admin/log`).
+  - **PWA, SEO, Mode Gelap, & Performa (`US-13`, `US-25` s/d `US-28`):** Instalasi PWA (`manifest.json`, `sw.js`, ikon 192 & 512), toggle mode terang/gelap, metadata SEO & Open Graph dinamis, `sitemap.xml` & `robots.txt`, serta halaman 404 & loading skeleton.
+  - **Integrasi AI Gemini (`US-14`, `US-50`):** Generator deskripsi paket layanan AI di form admin (`POST /api/ai/deskripsi`) dan widget chat Asisten AI publik (`POST /api/ai/asisten`) yang menjawab rekomendasi paket serta ketersediaan mesin sesuai data aktual gerai.
+  - **Fitur Coin Laundry & Hardening Keamanan (`US-EXTRA-01` s/d `US-EXTRA-03`, `K-6` s/d `K-13`):** Skema database additive, identitas visual + logo SVG kustom (`LogoLaundro`), live status mesin, reservasi *linked slots* Washer -> Dryer dengan kunci sementara TTL 15 menit (`PENDING_LOCK`), tracking kode booking `LND-YYMMDD-XXX` (`/antrean`), papan jadwal timeline interaktif admin + quick walk-in (`/admin/jadwal`), serta security headers, CSP ketat, rate limiter, dan error boundary tanpa stack trace.
