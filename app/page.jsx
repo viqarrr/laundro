@@ -1,6 +1,9 @@
 import Link from "next/link";
 import KatalogInteraktif from "@/components/KatalogInteraktif";
+import LiveMesinStatus from "@/components/LiveMesinStatus";
 import Tombol from "@/components/Tombol";
+import { getJakartaNow, releaseExpiredLocks } from "@/lib/laundry-scheduler";
+import { getPengaturanToko } from "@/lib/pengaturan";
 import { createSupabasePublicClient } from "@/lib/supabase/server";
 import { toko } from "@/lib/toko";
 
@@ -30,8 +33,12 @@ const langkahKerja = [
 async function ambilDataKatalog() {
   try {
     const supabase = createSupabasePublicClient();
+    await releaseExpiredLocks(supabase);
 
-    const [produkRes, kategoriRes, mesinRes] = await Promise.all([
+    const nowJakarta = getJakartaNow();
+    const todayStr = nowJakarta.dateStr;
+
+    const [produkRes, kategoriRes, mesinRes, blocksTodayRes, pengaturan] = await Promise.all([
       supabase
         .from("produk")
         .select(
@@ -45,11 +52,29 @@ async function ambilDataKatalog() {
         .select("id, nama, slug, deskripsi, urutan")
         .order("urutan", { ascending: true })
         .order("nama", { ascending: true }),
-      supabase.from("machines").select("id, type, status"),
+      supabase
+        .from("machines")
+        .select("id, machine_code, name, type, max_capacity_kg, cycle_duration_minutes, status")
+        .order("type", { ascending: false })
+        .order("machine_code", { ascending: true }),
+      supabase
+        .from("machine_time_blocks")
+        .select("id, machine_id, start_time, end_time, block_status")
+        .eq("block_date", todayStr)
+        .in("block_status", ["LOCKED_TEMP", "BOOKED", "RUNNING"]),
+      getPengaturanToko(),
     ]);
 
     if (produkRes.error) {
-      return { daftarProduk: [], daftarKategori: [], errorMuat: true };
+      return {
+        daftarProduk: [],
+        daftarKategori: [],
+        machines: [],
+        blocksToday: [],
+        currentTimeStr: nowJakarta.timeStr,
+        pengaturan,
+        errorMuat: true,
+      };
     }
 
     const machines = mesinRes.data || [];
@@ -70,10 +95,24 @@ async function ambilDataKatalog() {
     return {
       daftarProduk,
       daftarKategori: kategoriRes.error ? [] : kategoriRes.data || [],
+      machines,
+      blocksToday: blocksTodayRes.data || [],
+      currentTimeStr: nowJakarta.timeStr,
+      pengaturan,
       errorMuat: false,
     };
   } catch {
-    return { daftarProduk: [], daftarKategori: [], errorMuat: true };
+    const pengaturan = await getPengaturanToko();
+    const nowJakarta = getJakartaNow();
+    return {
+      daftarProduk: [],
+      daftarKategori: [],
+      machines: [],
+      blocksToday: [],
+      currentTimeStr: nowJakarta.timeStr,
+      pengaturan,
+      errorMuat: true,
+    };
   }
 }
 
@@ -83,16 +122,52 @@ export default async function HalamanKatalog({ searchParams }) {
   const initialKategori = String(sp?.kategori || "").trim();
   const initialSort = String(sp?.sort || "bawaan").trim();
 
-  const { daftarProduk, daftarKategori, errorMuat } = await ambilDataKatalog();
+  const {
+    daftarProduk,
+    daftarKategori,
+    machines,
+    blocksToday,
+    currentTimeStr,
+    pengaturan,
+    errorMuat,
+  } = await ambilDataKatalog();
+  const namaGerai = pengaturan?.nama_gerai || toko.nama;
+  const alamatGerai = pengaturan?.alamat || toko.alamat;
+  const jamBukaGerai = pengaturan?.jam_operasional_label || toko.jamBuka;
 
   return (
     <>
+      {/* Banner Promo Dinamis dari Admin (US-42) */}
+      {pengaturan?.banner_aktif && pengaturan?.banner_judul ? (
+        <section aria-label="Pengumuman dan promo gerai" className="pt-6">
+          <div className="flex flex-col justify-between gap-4 rounded-[20px] border border-utama/25 bg-utama-lembut p-5 sm:flex-row sm:items-center sm:px-6">
+            <div className="min-w-0">
+              <span className="inline-flex rounded-full bg-utama px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-white">
+                Promo Gerai
+              </span>
+              <h2 className="mt-2 text-lg font-semibold tracking-[-0.015em] text-teks">
+                {pengaturan.banner_judul}
+              </h2>
+              {pengaturan.banner_subjudul ? (
+                <p className="mt-0.5 text-sm text-teks-lembut">{pengaturan.banner_subjudul}</p>
+              ) : null}
+            </div>
+
+            {pengaturan.banner_cta ? (
+              <Tombol href={pengaturan.banner_link || "/antrean"} className="shrink-0">
+                {pengaturan.banner_cta}
+              </Tombol>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
       {/* Band 1: Hero Section (selaras dengan .hero-section di _ref/test-agy) */}
       <section className="band-full py-12 sm:py-[72px]">
         <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
           <div className="flex flex-col items-start gap-4">
             <p className="text-[13px] font-semibold uppercase tracking-[0.04em] text-teks-lembut">
-              LAUNDRY KOIN DIGITAL · {toko.nama.toUpperCase()}
+              LAUNDRY KOIN DIGITAL · {namaGerai.toUpperCase()}
             </p>
             <h1 className="text-[clamp(34px,4.5vw,52px)] font-semibold leading-[1.08] tracking-[-0.025em] text-teks">
               Cuci &amp; Kering Tanpa Antre.
@@ -111,7 +186,7 @@ export default async function HalamanKatalog({ searchParams }) {
           <div className="flex justify-center">
             <img
               src="/images/hero-machines.jpg"
-              alt={`Mesin cuci dan pengering komersial ${toko.nama}`}
+              alt={`Mesin cuci dan pengering komersial ${namaGerai}`}
               className="max-h-[340px] w-auto rounded-[14px] object-cover shadow-product"
               width={560}
               height={400}
@@ -154,6 +229,17 @@ export default async function HalamanKatalog({ searchParams }) {
 
       {/* Band 3: Katalog Paket & Tarif (.catalog-grid 2 kolom horizontal) */}
       <section id="katalog-layanan" aria-labelledby="judul-produk" className="band-full py-14">
+        {machines.length > 0 ? (
+          <div className="mb-10">
+            <LiveMesinStatus
+              machines={machines}
+              blocksToday={blocksToday}
+              currentTimeStr={currentTimeStr}
+              compact
+            />
+          </div>
+        ) : null}
+
         <div className="mb-8 max-w-[560px]">
           <h2
             id="judul-produk"
@@ -205,7 +291,7 @@ export default async function HalamanKatalog({ searchParams }) {
             Gerai &amp; Pemantauan Antrean
           </h2>
           <p className="mt-1.5 text-[17px] leading-[22px] tracking-[-0.02em] text-teks-lembut">
-            {toko.jamBuka} dengan pemantauan status mesin per unit secara real-time.
+            {jamBukaGerai} dengan pemantauan status mesin per unit secara real-time.
           </p>
         </div>
 
@@ -216,11 +302,11 @@ export default async function HalamanKatalog({ searchParams }) {
                 Gerai Aktif
               </span>
               <h3 className="mt-3 text-[22px] font-semibold leading-[28px] tracking-[-0.01em] text-teks">
-                {toko.nama}
+                {namaGerai}
               </h3>
-              <p className="mt-1 text-[14px] leading-[20px] text-teks-lembut">{toko.alamat}</p>
+              <p className="mt-1 text-[14px] leading-[20px] text-teks-lembut">{alamatGerai}</p>
               <p className="numeric mt-1 text-[14px] leading-[20px] text-teks-lembut">
-                {toko.jamBuka}
+                {jamBukaGerai}
               </p>
             </div>
             <Link

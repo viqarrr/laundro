@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/supabase/session";
+import { catatLogAdmin } from "@/lib/admin-log";
 import { validasiFileFotoProduk, validasiInputProduk } from "@/lib/validators/produk";
 
 const STORAGE_BUCKET = "produk-images";
@@ -29,7 +30,7 @@ async function uploadFotoKeStorage(supabase, fileCheck) {
 }
 
 export async function tambahProdukAction(_prevState, formData) {
-  const { supabase } = await requireAdmin();
+  const { supabase, user } = await requireAdmin();
 
   let berhasil = false;
 
@@ -61,14 +62,27 @@ export async function tambahProdukAction(_prevState, formData) {
       finalFotoUrl = uploaded.url;
     }
 
-    const { error } = await supabase.from("produk").insert({
-      ...data,
-      foto_url: finalFotoUrl,
-    });
+    const { data: inserted, error } = await supabase
+      .from("produk")
+      .insert({
+        ...data,
+        foto_url: finalFotoUrl,
+      })
+      .select("id")
+      .maybeSingle();
 
     if (error) {
       return { error: "Gagal menyimpan paket layanan baru ke database." };
     }
+
+    await catatLogAdmin({
+      supabase,
+      adminEmail: user.email,
+      aksi: "TAMBAH_PRODUK",
+      entitas: "produk",
+      entitasId: inserted?.id,
+      detail: { nama: data.nama, kategori: data.kategori, harga: data.harga },
+    });
 
     revalidatePath("/");
     revalidatePath("/admin");
@@ -85,7 +99,7 @@ export async function tambahProdukAction(_prevState, formData) {
 }
 
 export async function ubahProdukAction(_prevState, formData) {
-  const { supabase } = await requireAdmin();
+  const { supabase, user } = await requireAdmin();
 
   const idRaw = String(formData.get("id") || "").trim();
   if (!/^\d+$/.test(idRaw)) {
@@ -135,6 +149,15 @@ export async function ubahProdukAction(_prevState, formData) {
       return { error: "Gagal memperbarui data paket layanan." };
     }
 
+    await catatLogAdmin({
+      supabase,
+      adminEmail: user.email,
+      aksi: "UBAH_PRODUK",
+      entitas: "produk",
+      entitasId: produkId,
+      detail: { nama: data.nama, kategori: data.kategori, harga: data.harga },
+    });
+
     revalidatePath("/");
     revalidatePath(`/produk/${produkId}`);
     revalidatePath("/admin");
@@ -151,7 +174,7 @@ export async function ubahProdukAction(_prevState, formData) {
 }
 
 export async function hapusProdukAction(id) {
-  const { supabase } = await requireAdmin();
+  const { supabase, user } = await requireAdmin();
 
   if (!/^\d+$/.test(String(id))) {
     return { ok: false, error: "ID paket layanan tidak valid." };
@@ -163,6 +186,14 @@ export async function hapusProdukAction(id) {
       return { ok: false, error: "Gagal menghapus paket layanan." };
     }
 
+    await catatLogAdmin({
+      supabase,
+      adminEmail: user.email,
+      aksi: "HAPUS_PRODUK",
+      entitas: "produk",
+      entitasId: id,
+    });
+
     revalidatePath("/admin");
     revalidatePath("/");
     return { ok: true };
@@ -172,7 +203,7 @@ export async function hapusProdukAction(id) {
 }
 
 export async function toggleAktifProdukAction(id, aktifBerikutnya) {
-  const { supabase } = await requireAdmin();
+  const { supabase, user } = await requireAdmin();
 
   if (!/^\d+$/.test(String(id))) {
     return { ok: false, error: "ID paket layanan tidak valid." };
@@ -187,6 +218,15 @@ export async function toggleAktifProdukAction(id, aktifBerikutnya) {
     if (error) {
       return { ok: false, error: "Gagal mengubah status aktif layanan." };
     }
+
+    await catatLogAdmin({
+      supabase,
+      adminEmail: user.email,
+      aksi: "TOGGLE_AKTIF_PRODUK",
+      entitas: "produk",
+      entitasId: id,
+      detail: { aktif: Boolean(aktifBerikutnya) },
+    });
 
     revalidatePath("/admin");
     revalidatePath("/");

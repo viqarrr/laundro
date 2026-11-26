@@ -1,16 +1,20 @@
 import Link from "next/link";
 import { toko } from "@/lib/toko";
 
-export default function Footer() {
+export default function Footer({ pengaturan = null }) {
+  const namaGerai = pengaturan?.nama_gerai || toko.nama;
+  const alamatGerai = pengaturan?.alamat || toko.alamat;
+  const jamBukaGerai = pengaturan?.jam_operasional_label || toko.jamBuka;
+
   return (
     <footer className="border-t border-garis bg-latar">
       <div className="mx-auto flex max-w-[1080px] flex-col gap-3 px-4 py-6 text-[14px] text-teks-lembut sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p className="numeric">
-          <span className="font-semibold text-teks">{toko.nama}</span>
+          <span className="font-semibold text-teks">{namaGerai}</span>
           {" · "}
-          {toko.alamat}
+          {alamatGerai}
           {" · "}
-          {toko.jamBuka}
+          {jamBukaGerai}
         </p>
 
         <nav aria-label="Tautan footer" className="flex flex-wrap items-center gap-x-5 gap-y-2">

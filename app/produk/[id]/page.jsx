@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import GaleriProduk from "@/components/GaleriProduk";
 import KalkulatorLaundry from "@/components/KalkulatorLaundry";
 import KartuProduk from "@/components/KartuProduk";
+import { getPengaturanToko } from "@/lib/pengaturan";
 import { createSupabasePublicClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -86,7 +87,10 @@ async function ambilDetailDanTerkait(id) {
 
 export default async function HalamanDetailProduk({ params }) {
   const { id } = await params;
-  const { produk, terkait } = await ambilDetailDanTerkait(id);
+  const [{ produk, terkait }, pengaturan] = await Promise.all([
+    ambilDetailDanTerkait(id),
+    getPengaturanToko(),
+  ]);
 
   if (!produk) {
     notFound();
@@ -158,7 +162,7 @@ export default async function HalamanDetailProduk({ params }) {
             </div>
           </div>
 
-          <KalkulatorLaundry produk={produk} />
+          <KalkulatorLaundry produk={produk} pengaturan={pengaturan} />
         </div>
       </article>
 

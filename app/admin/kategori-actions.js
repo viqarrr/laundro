@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/supabase/session";
+import { catatLogAdmin } from "@/lib/admin-log";
 
 function buatSlug(teks) {
   return String(teks || "")
@@ -67,7 +68,7 @@ function revalidateKategoriPaths() {
 }
 
 export async function tambahKategoriAction(_prevState, formData) {
-  const { supabase } = await requireAdmin();
+  const { supabase, user } = await requireAdmin();
 
   try {
     const { valid, data, errors } = validasiInputKategori(formData);
@@ -93,7 +94,11 @@ export async function tambahKategoriAction(_prevState, formData) {
       };
     }
 
-    const { error } = await supabase.from("kategori").insert(data);
+    const { data: inserted, error } = await supabase
+      .from("kategori")
+      .insert(data)
+      .select("id")
+      .maybeSingle();
     if (error) {
       if (error.code === "23505") {
         return {
@@ -105,6 +110,15 @@ export async function tambahKategoriAction(_prevState, formData) {
       return { ok: false, error: "Gagal menambahkan kategori ke database." };
     }
 
+    await catatLogAdmin({
+      supabase,
+      adminEmail: user.email,
+      aksi: "TAMBAH_KATEGORI",
+      entitas: "kategori",
+      entitasId: inserted?.id,
+      detail: { nama: data.nama, slug: data.slug },
+    });
+
     revalidateKategoriPaths();
     return { ok: true, success: `Kategori "${data.nama}" berhasil ditambahkan.` };
   } catch {
@@ -113,7 +127,7 @@ export async function tambahKategoriAction(_prevState, formData) {
 }
 
 export async function ubahKategoriAction(_prevState, formData) {
-  const { supabase } = await requireAdmin();
+  const { supabase, user } = await requireAdmin();
 
   const idRaw = String(formData.get("id") || "").trim();
   if (!/^\d+$/.test(idRaw)) {
@@ -158,6 +172,15 @@ export async function ubahKategoriAction(_prevState, formData) {
       return { ok: false, error: "Gagal memperbarui kategori." };
     }
 
+    await catatLogAdmin({
+      supabase,
+      adminEmail: user.email,
+      aksi: "UBAH_KATEGORI",
+      entitas: "kategori",
+      entitasId: kategoriId,
+      detail: { nama: data.nama, slug: data.slug },
+    });
+
     revalidateKategoriPaths();
     return { ok: true, success: `Kategori "${data.nama}" berhasil diperbarui.` };
   } catch {
@@ -166,7 +189,7 @@ export async function ubahKategoriAction(_prevState, formData) {
 }
 
 export async function hapusKategoriAction(id) {
-  const { supabase } = await requireAdmin();
+  const { supabase, user } = await requireAdmin();
 
   if (!/^\d+$/.test(String(id))) {
     return { ok: false, error: "ID kategori tidak valid." };
@@ -177,6 +200,14 @@ export async function hapusKategoriAction(id) {
     if (error) {
       return { ok: false, error: "Gagal menghapus kategori." };
     }
+
+    await catatLogAdmin({
+      supabase,
+      adminEmail: user.email,
+      aksi: "HAPUS_KATEGORI",
+      entitas: "kategori",
+      entitasId: id,
+    });
 
     revalidateKategoriPaths();
     return { ok: true };

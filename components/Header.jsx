@@ -8,7 +8,8 @@ const navItems = [
   { href: "/tentang", label: "Tentang" },
 ];
 
-export default function Header() {
+export default function Header({ pengaturan = null }) {
+  const namaGerai = pengaturan?.nama_gerai || toko.nama;
   return (
     <header
       className="sticky top-0 z-50 border-b border-garis backdrop-blur-xl"
@@ -31,7 +32,7 @@ export default function Header() {
             <circle cx="10" cy="10" r="3.75" stroke="currentColor" strokeWidth="1.4" />
             <circle cx="10" cy="10" r="1.2" fill="currentColor" />
           </svg>
-          <span>{toko.nama}</span>
+          <span>{namaGerai}</span>
         </Link>
 
         <nav aria-label="Navigasi utama" className="hidden items-center gap-6 sm:flex">

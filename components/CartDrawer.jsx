@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useCart } from "@/components/CartProvider";
 import { formatRupiah } from "@/lib/format";
 import { toko } from "@/lib/toko";
+import { catatKlikWa } from "@/lib/wa-tracking";
 
 function normalisasiNomorWa(nomor) {
   const digits = String(nomor || "").replace(/\D/g, "");
@@ -13,7 +14,7 @@ function normalisasiNomorWa(nomor) {
   return digits;
 }
 
-export default function CartDrawer() {
+export default function CartDrawer({ pengaturan = null }) {
   const {
     items,
     isOpen,
@@ -44,7 +45,8 @@ export default function CartDrawer() {
 
   if (!isOpen) return null;
 
-  const nomorTujuan = normalisasiNomorWa(toko.nomorWhatsApp);
+  const namaGerai = pengaturan?.nama_gerai || toko.nama;
+  const nomorTujuan = normalisasiNomorWa(pengaturan?.nomor_wa || toko.nomorWhatsApp);
   const barisItem = items
     .map((item, idx) => {
       const totalBaris = Number(item.hargaSatuan || 0) * Number(item.jumlah || 0);
@@ -55,7 +57,7 @@ export default function CartDrawer() {
     .join("\n");
 
   const pesanWa = [
-    `Halo ${toko.nama}, saya ingin memesan layanan berikut:`,
+    `Halo ${namaGerai}, saya ingin memesan layanan berikut:`,
     barisItem,
     "",
     `Subtotal: ${formatRupiah(subtotal)}`,
@@ -205,6 +207,9 @@ export default function CartDrawer() {
                 href={tautanWa}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() =>
+                  catatKlikWa({ produkId: items[0]?.produkId || null, sumber: "keranjang" })
+                }
                 className="inline-flex min-h-[44px] flex-1 items-center justify-center rounded-full bg-utama px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-utama-gelap active:scale-[0.98]"
               >
                 Pesan Semua via WhatsApp

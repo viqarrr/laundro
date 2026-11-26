@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCart } from "@/components/CartProvider";
 import { formatRupiah } from "@/lib/format";
 import { toko } from "@/lib/toko";
+import { catatKlikWa } from "@/lib/wa-tracking";
 
 function normalisasiNomorWa(nomor) {
   const digits = String(nomor || "").replace(/\D/g, "");
@@ -14,7 +15,19 @@ function normalisasiNomorWa(nomor) {
   return digits;
 }
 
-export default function KalkulatorLaundry({ produk }) {
+function hitungDp(totalHarga, pengaturan) {
+  if (totalHarga <= 0) return 0;
+  if (pengaturan?.dp_type === "PERCENTAGE") {
+    const persen = Math.min(100, Math.max(0, Number(pengaturan.dp_value ?? 50)));
+    return Math.round((totalHarga * persen) / 100);
+  }
+  if (pengaturan?.dp_type === "FIXED") {
+    return Math.min(totalHarga, Math.max(0, Number(pengaturan.dp_value ?? 15000)));
+  }
+  return Math.round(totalHarga * 0.5);
+}
+
+export default function KalkulatorLaundry({ produk, pengaturan = null }) {
   const { addItem, openCart } = useCart();
 
   const varianList = useMemo(() => {
@@ -64,10 +77,11 @@ export default function KalkulatorLaundry({ produk }) {
 
   const beratValid = Math.max(1, Number(beratKg || kapasitasAktif));
   const totalHarga = hargaSatuan * jumlahTabung;
-  const estimasiDp = Math.round(totalHarga * 0.5);
+  const estimasiDp = hitungDp(totalHarga, pengaturan);
 
-  const nomorTujuan = normalisasiNomorWa(toko.nomorWhatsApp);
-  const pesanWa = `Halo ${toko.nama}, saya ingin reservasi ${produk.nama} (${namaVarian}) sebanyak ${jumlahTabung} tabung/unit (est. ${beratValid} kg) seharga total ${formatRupiah(totalHarga)} (estimasi DP ${formatRupiah(estimasiDp)}). Mohon info konfirmasi DP.`;
+  const namaGerai = pengaturan?.nama_gerai || toko.nama;
+  const nomorTujuan = normalisasiNomorWa(pengaturan?.nomor_wa || toko.nomorWhatsApp);
+  const pesanWa = `Halo ${namaGerai}, saya ingin reservasi ${produk.nama} (${namaVarian}) sebanyak ${jumlahTabung} tabung/unit (est. ${beratValid} kg) seharga total ${formatRupiah(totalHarga)} (estimasi DP ${formatRupiah(estimasiDp)}). Mohon info konfirmasi DP.`;
   const tautanWa = `https://wa.me/${nomorTujuan}?text=${encodeURIComponent(pesanWa)}`;
 
   function handleTambahKeranjang() {
@@ -244,6 +258,7 @@ export default function KalkulatorLaundry({ produk }) {
             href={tautanWa}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => catatKlikWa({ produkId: produk?.id, sumber: "kalkulator" })}
             className="inline-flex min-h-[44px] flex-1 items-center justify-center rounded-full bg-utama px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-utama-gelap active:scale-[0.98] sm:flex-none"
           >
             Pesan via WhatsApp
