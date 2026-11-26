@@ -1,10 +1,10 @@
-export default function Input({ label, name, type = "text", textarea = false, ...props }) {
+export default function Input({ label, name, type = "text", textarea = false, className = "", ...props }) {
   const kelas =
-    "w-full rounded-lg border border-garis bg-latar px-3 py-2.5 text-base text-teks placeholder:text-teks-lembut focus:border-utama focus:outline-none";
+    "min-h-[44px] w-full rounded-[8px] border border-garis-tegas bg-latar px-3.5 py-2.5 text-[15px] text-teks placeholder:text-teks-lembut transition-colors focus:border-utama focus:outline-none";
 
   return (
-    <label className="flex flex-col gap-1.5 text-sm font-semibold">
-      {label}
+    <label className={`flex flex-col gap-1.5 text-[13px] font-semibold tracking-[-0.01em] text-teks ${className}`}>
+      <span>{label}</span>
       {textarea ? (
         <textarea name={name} rows={4} className={kelas} {...props} />
       ) : (

@@ -1,33 +1,149 @@
 @import "tailwindcss";
 
 /*
-  Token desain. Ganti nilai di sini untuk menyesuaikan dengan usahamu.
-  Penjelasan setiap token ada di DESIGN.md.
+  Token desain Laundro (referensi _ref/test-agy/styles.css).
+  Mendukung mode terang (:root) dan mode gelap (:root.dark) untuk US-25.
 */
-@theme {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+:root {
+  --latar: #ffffff;
+  --permukaan: #f5f5f7;
+  --permukaan-grup: #f2f2f7;
+  --garis: rgba(60, 60, 67, 0.16);
+  --garis-tegas: #c6c6c8;
+  --teks: #1d1d1f;
+  --teks-lembut: #5c5c60;
 
-  --color-latar: #ffffff;
-  --color-permukaan: #f1f5f2;
-  --color-garis: #dde5e0;
-  --color-teks: #1b2420;
-  --color-teks-lembut: #5b6a62;
+  --utama: #0066cc;
+  --utama-gelap: #0055b3;
+  --utama-lembut: rgba(0, 122, 255, 0.08);
 
-  --color-utama: #1f6b4f;
-  --color-utama-gelap: #154d39;
+  --harga: #9c5700;
+  --harga-latar: rgba(255, 149, 0, 0.12);
 
-  --color-harga: #7a4e09;
-  --color-harga-latar: #fbefd8;
+  --sukses: #1b7f37;
+  --sukses-latar: rgba(52, 199, 89, 0.14);
 
-  --color-bahaya: #b42318;
+  --bahaya: #c9241b;
+  --bahaya-latar: rgba(255, 59, 48, 0.08);
+
+  --nav-latar: rgba(255, 255, 255, 0.88);
+  --shadow-product: 3px 5px 30px 0 rgba(0, 0, 0, 0.22);
+}
+
+:root.dark {
+  --latar: #0b0c10;
+  --permukaan: #16181d;
+  --permukaan-grup: #101216;
+  --garis: rgba(235, 235, 245, 0.16);
+  --garis-tegas: #383a42;
+  --teks: #f5f5f7;
+  --teks-lembut: #a1a1aa;
+
+  --utama: #0a84ff;
+  --utama-gelap: #0071e3;
+  --utama-lembut: rgba(10, 132, 255, 0.16);
+
+  --harga: #ffb340;
+  --harga-latar: rgba(255, 159, 10, 0.16);
+
+  --sukses: #32d74b;
+  --sukses-latar: rgba(48, 209, 88, 0.18);
+
+  --bahaya: #ff453a;
+  --bahaya-latar: rgba(255, 69, 58, 0.16);
+
+  --nav-latar: rgba(11, 12, 16, 0.86);
+  --shadow-product: 3px 5px 30px 0 rgba(0, 0, 0, 0.5);
+}
+
+@theme inline {
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  --color-latar: var(--latar);
+  --color-permukaan: var(--permukaan);
+  --color-permukaan-grup: var(--permukaan-grup);
+  --color-garis: var(--garis);
+  --color-garis-tegas: var(--garis-tegas);
+  --color-teks: var(--teks);
+  --color-teks-lembut: var(--teks-lembut);
+
+  --color-utama: var(--utama);
+  --color-utama-gelap: var(--utama-gelap);
+  --color-utama-lembut: var(--utama-lembut);
+
+  --color-harga: var(--harga);
+  --color-harga-latar: var(--harga-latar);
+
+  --color-sukses: var(--sukses);
+  --color-sukses-latar: var(--sukses-latar);
+
+  --color-bahaya: var(--bahaya);
+  --color-bahaya-latar: var(--bahaya-latar);
 }
 
 html {
-  color: var(--color-teks);
-  background: var(--color-latar);
+  scroll-behavior: smooth;
+  color: var(--teks);
+  background-color: var(--latar);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  color: var(--teks);
+  background-color: var(--latar);
+  letter-spacing: -0.02em;
+  overflow-x: clip;
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-utama);
+  outline: 2px solid var(--utama);
   outline-offset: 2px;
+}
+
+.numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+.shadow-product {
+  box-shadow: var(--shadow-product);
+}
+
+/* Band latar full-bleed ala landing-band di referensi test-agy tanpa memicu overflow horizontal */
+.band-full {
+  position: relative;
+}
+
+.band-full::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -100vmax;
+  right: -100vmax;
+  z-index: -1;
+  border-bottom: 1px solid var(--garis);
+  background-color: var(--latar);
+}
+
+.band-full--grouped::before {
+  background-color: var(--permukaan);
+}
+
+.band-full--last::before {
+  border-bottom: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

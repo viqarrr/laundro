@@ -4,7 +4,7 @@ export default function TombolWhatsApp({ produk }) {
   return (
     <button
       type="button"
-      className="inline-flex w-full items-center justify-center rounded-lg bg-utama px-5 py-3 font-semibold text-white hover:bg-utama-gelap sm:w-auto"
+      className="inline-flex min-h-[44px] w-full items-center justify-center rounded-full bg-utama px-6 py-3 text-[16px] font-semibold tracking-[-0.02em] text-white transition-all duration-150 hover:bg-utama-gelap active:scale-[0.96] sm:w-auto"
     >
       Pesan via WhatsApp
     </button>
